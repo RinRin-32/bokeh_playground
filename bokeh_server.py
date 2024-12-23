@@ -20,6 +20,7 @@ y1 = np.ones(n_samples)
 # Combine data
 X = np.vstack((x0, x1))
 y = np.hstack((y0, y1))
+model = LogisticRegression()
 
 # Create a ColumnDataSource
 source = ColumnDataSource(data={
@@ -32,9 +33,8 @@ selected_source = ColumnDataSource(data={"x": [], "y": [], "class": [], "status"
 ind = []
 
 # Function to calculate decision boundaries
-def calculate_boundaries(X, y):
+def calculate_boundaries(X, y, model):
     if len(X) > 1:
-        model = LogisticRegression()
         model.fit(X, y)
         x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
         y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
@@ -45,7 +45,7 @@ def calculate_boundaries(X, y):
     return None, None, None
 
 # Initial calculation
-xx, yy, Z = calculate_boundaries(X, y)
+xx, yy, Z = calculate_boundaries(X, y, model)
 
 # Create Bokeh figure
 p = figure(title="Interactive Logistic Regression", width=600, height=600, tools="tap")
@@ -109,7 +109,7 @@ def confirm_selection():
     X_new = np.column_stack((np.array(new_data["x"])[mask], np.array(new_data["y"])[mask]))
     y_new = np.array(new_data["class"])[mask]
 
-    xx, yy, Z = calculate_boundaries(X_new, y_new)
+    xx, yy, Z = calculate_boundaries(X_new, y_new, model)
     if Z is not None:
         p.renderers = [r for r in p.renderers if not isinstance(r, Image)]
         if len(p.renderers) > 2:
