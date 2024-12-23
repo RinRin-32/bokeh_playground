@@ -1,13 +1,13 @@
 import numpy as np
 from bokeh.plotting import figure, curdoc
-from bokeh.models import ColumnDataSource, TapTool, LassoSelectTool, DataTable, TableColumn, Button
+from bokeh.models import ColumnDataSource, TapTool, LassoSelectTool, DataTable, TableColumn, Button, Div
 from bokeh.layouts import column, row
 from sklearn.linear_model import LogisticRegression
 from bokeh.models import Image
 
 # Generate random 2D data
 np.random.seed(42)
-n_samples = 100
+n_samples = 200
 
 # Class 0
 x0 = np.random.normal(loc=2.0, scale=1.0, size=(n_samples, 2))
@@ -32,9 +32,18 @@ source = ColumnDataSource(data={
 selected_source = ColumnDataSource(data={"x": [], "y": [], "class": [], "status": []})
 ind = []
 
+# Add a Div for messages
+message_div = Div(text="", width=400, height=50, styles={"color": "red"})
+
 # Function to calculate decision boundaries
 def calculate_boundaries(X, y, model):
-    if len(X) > 1:
+    unique_classes = np.unique(y)
+    if len(unique_classes) < 2:
+        reset_selection()
+        message_div.text = "Error: At least two classes are required to fit the model."
+        return None, None, None
+    else:
+        message_div.text = ""  # Clear the message
         model.fit(X, y)
         x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
         y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
@@ -42,13 +51,12 @@ def calculate_boundaries(X, y, model):
                              np.linspace(y_min, y_max, 100))
         Z = model.predict(np.c_[xx.ravel(), yy.ravel()])
         return xx, yy, Z.reshape(xx.shape)
-    return None, None, None
 
 # Initial calculation
 xx, yy, Z = calculate_boundaries(X, y, model)
 
 # Create Bokeh figure
-p = figure(title="Interactive Logistic Regression", width=600, height=600, tools="tap,lasso_select,box_select")
+p = figure(title="Interactive Logistic Regression", width=600, height=600, tools="tap,box_select")
 if Z is not None:
     p.image(image=[Z], x=xx.min(), y=yy.min(), dw=xx.max()-xx.min(),
             dh=yy.max()-yy.min(), palette=["blue", "red"], alpha=0.3)
@@ -152,5 +160,5 @@ confirm_button.on_click(confirm_selection)
 reset_button.on_click(reset_selection)
 
 # Layout and show
-layout = column(p, data_table, row(confirm_button, reset_button))
+layout = column(p, data_table, row(confirm_button, reset_button), message_div)
 curdoc().add_root(layout)
