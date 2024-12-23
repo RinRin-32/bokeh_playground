@@ -22,8 +22,14 @@ X = np.vstack((x0, x1))
 y = np.hstack((y0, y1))
 
 # Create a ColumnDataSource
-source = ColumnDataSource(data={"x": X[:, 0], "y": X[:, 1], "class": y, "color": ["blue"]*n_samples*2})
-selected_source = ColumnDataSource(data={"x": [], "y": [], "class": []})
+source = ColumnDataSource(data={
+    "x": X[:, 0],
+    "y": X[:, 1],
+    "class": y,
+    "color": ["blue" if cls == 0 else "green" for cls in y]
+})
+selected_source = ColumnDataSource(data={"x": [], "y": [], "class": [], "status": []})
+ind = []
 
 # Function to calculate decision boundaries
 def calculate_boundaries(X, y):
@@ -54,7 +60,8 @@ p.scatter("x", "y", size=8, source=source, color="color")
 columns = [
     TableColumn(field="x", title="X"),
     TableColumn(field="y", title="Y"),
-    TableColumn(field="class", title="Class")
+    TableColumn(field="class", title="Class"),
+    TableColumn(field="status", title="Status")
 ]
 data_table = DataTable(source=selected_source, columns=columns, width=400, height=200)
 
@@ -64,20 +71,33 @@ confirm_button = Button(label="Confirm Selection", width=200)
 # Callback for updating the selection stack
 def update_selection(attr, old, new):
     selected_indices = source.selected.indices
-    data = source.data
-    new_data = {"x": [], "y": [], "class": []}
+    temp_data = {"x": [], "y": [], "class": [], "status": []}
+    new_data = source.data.copy()
     for idx in selected_indices:
-        new_data["x"].append(data["x"][idx])
-        new_data["y"].append(data["y"][idx])
-        new_data["class"].append(data["class"][idx])
-    selected_source.data = new_data
+        temp_data["x"].append(new_data["x"][idx])
+        temp_data["y"].append(new_data["y"][idx])
+        temp_data["class"].append(new_data["class"][idx])
+        if new_data["color"][idx] != 'grey':
+            temp_data["status"].append('removing')
+        else:
+            temp_data["status"].append('adding')
+        new_data["color"][idx] = "red"
+    source.data = new_data
+    selected_source.stream(temp_data)
+    ind.extend(selected_indices)
 
 # Callback for confirming selection
 def confirm_selection():
-    selected_indices = source.selected.indices
+    selected_indices = ind
     new_data = source.data.copy()
+
     for idx in selected_indices:
-        new_data["color"][idx] = "grey"
+        if new_data["color"][idx] != "grey":
+            new_data["color"][idx] = "grey"
+        elif new_data["class"][idx] == 0:
+            new_data["color"][idx] = "blue"
+        else:
+            new_data["color"][idx] = "green"
     source.data = new_data
 
     # Recalculate decision boundaries
@@ -95,7 +115,7 @@ def confirm_selection():
 
     # Clear the selection and stack
     source.selected.indices = []
-    selected_source.data = {"x": [], "y": [], "class": []}
+    selected_source.data = {"x": [], "y": [], "class": [], "status": []}
 
 # Attach callbacks
 source.selected.on_change("indices", update_selection)
