@@ -1,7 +1,7 @@
 import numpy as np
 from bokeh.plotting import figure, curdoc
-from bokeh.models import ColumnDataSource, TapTool, DataTable, TableColumn, Button
-from bokeh.layouts import column
+from bokeh.models import ColumnDataSource, TapTool, LassoSelectTool, DataTable, TableColumn, Button
+from bokeh.layouts import column, row
 from sklearn.linear_model import LogisticRegression
 from bokeh.models import Image
 
@@ -48,7 +48,7 @@ def calculate_boundaries(X, y, model):
 xx, yy, Z = calculate_boundaries(X, y, model)
 
 # Create Bokeh figure
-p = figure(title="Interactive Logistic Regression", width=600, height=600, tools="tap")
+p = figure(title="Interactive Logistic Regression", width=600, height=600, tools="tap,lasso_select,box_select")
 if Z is not None:
     p.image(image=[Z], x=xx.min(), y=yy.min(), dw=xx.max()-xx.min(),
             dh=yy.max()-yy.min(), palette=["blue", "red"], alpha=0.3)
@@ -65,6 +65,9 @@ data_table = DataTable(source=selected_source, columns=columns, width=400, heigh
 
 # Button to confirm selection
 confirm_button = Button(label="Confirm Selection", width=200)
+
+# Button to reset all selections
+reset_button = Button(label="Reset", width=200)
 
 # Callback for updating the selection stack
 def update_selection(attr, old, new):
@@ -113,7 +116,7 @@ def confirm_selection():
     if Z is not None:
         p.renderers = [r for r in p.renderers if not isinstance(r, Image)]
         if len(p.renderers) > 2:
-                p.renderers.remove(p.renderers[-1])
+            p.renderers.remove(p.renderers[-1])
         p.image(image=[Z], x=xx.min(), y=yy.min(), dw=xx.max()-xx.min(),
                 dh=yy.max()-yy.min(), palette=["blue", "red"], alpha=0.3)
 
@@ -121,10 +124,33 @@ def confirm_selection():
     source.selected.indices = []
     selected_source.data = {"x": [], "y": [], "class": [], "status": []}
 
+# Callback for resetting all selections
+def reset_selection():
+    # Reset source data colors to original
+    new_data = source.data.copy()
+    for i in range(len(new_data["color"])):
+        new_data["color"][i] = "blue" if new_data["class"][i] == 0 else "green"
+    source.data = new_data
+
+    # Recalculate decision boundaries using all data
+    xx, yy, Z = calculate_boundaries(X, y, model)
+    if Z is not None:
+        p.renderers = [r for r in p.renderers if not isinstance(r, Image)]
+        if len(p.renderers) > 2:
+            p.renderers.remove(p.renderers[-1])
+        p.image(image=[Z], x=xx.min(), y=yy.min(), dw=xx.max()-xx.min(),
+                dh=yy.max()-yy.min(), palette=["blue", "red"], alpha=0.3)
+
+    # Clear the selection and stack
+    source.selected.indices = []
+    selected_source.data = {"x": [], "y": [], "class": [], "status": []}
+    ind.clear()
+
 # Attach callbacks
 source.selected.on_change("indices", update_selection)
 confirm_button.on_click(confirm_selection)
+reset_button.on_click(reset_selection)
 
 # Layout and show
-layout = column(p, data_table, confirm_button)
+layout = column(p, data_table, row(confirm_button, reset_button))
 curdoc().add_root(layout)
