@@ -1,6 +1,6 @@
 import numpy as np
-from bokeh.plotting import figure, show, curdoc
-from bokeh.models import ColumnDataSource, TapTool
+from bokeh.plotting import figure, curdoc
+from bokeh.models import ColumnDataSource, TapTool, DataTable, TableColumn, Button
 from bokeh.layouts import column
 from sklearn.linear_model import LogisticRegression
 from bokeh.models import Image
@@ -23,6 +23,7 @@ y = np.hstack((y0, y1))
 
 # Create a ColumnDataSource
 source = ColumnDataSource(data={"x": X[:, 0], "y": X[:, 1], "class": y, "color": ["blue"]*n_samples*2})
+selected_source = ColumnDataSource(data={"x": [], "y": [], "class": []})
 
 # Function to calculate decision boundaries
 def calculate_boundaries(X, y):
@@ -49,36 +50,57 @@ if Z is not None:
 # Add scatter points
 p.scatter("x", "y", size=8, source=source, color="color")
 
-# Callback function to remove a selected point
-def remove_point(attr, old, new):
-    selected_index = source.selected.indices
-    if selected_index:
-        #new_data = {key: np.delete(value, selected_index, axis=0) for key, value in source.data.items()}
-        new_data = source.data.copy()
-        for i in selected_index:
-            if new_data["color"][i] != 'grey':
-                new_data["color"][i] = 'grey'
-            else:
-                new_data["color"][i] = 'blue'
+# Table for previewing selected points
+columns = [
+    TableColumn(field="x", title="X"),
+    TableColumn(field="y", title="Y"),
+    TableColumn(field="class", title="Class")
+]
+data_table = DataTable(source=selected_source, columns=columns, width=400, height=200)
 
-        source.data = new_data
+# Button to confirm selection
+confirm_button = Button(label="Confirm Selection", width=200)
 
+# Callback for updating the selection stack
+def update_selection(attr, old, new):
+    selected_indices = source.selected.indices
+    data = source.data
+    new_data = {"x": [], "y": [], "class": []}
+    for idx in selected_indices:
+        new_data["x"].append(data["x"][idx])
+        new_data["y"].append(data["y"][idx])
+        new_data["class"].append(data["class"][idx])
+    selected_source.data = new_data
 
-        mask = np.array(new_data["color"]) != "grey"
-        X_new = np.column_stack((np.array(new_data["x"])[mask], np.array(new_data["y"])[mask]))
-        y_new = np.array(new_data["class"])[mask]
+# Callback for confirming selection
+def confirm_selection():
+    selected_indices = source.selected.indices
+    new_data = source.data.copy()
+    for idx in selected_indices:
+        new_data["color"][idx] = "grey"
+    source.data = new_data
 
-        xx, yy, Z = calculate_boundaries(X_new, y_new)
-        if Z is not None:
-            p.renderers = [r for r in p.renderers if not isinstance(r, Image)]
-            if len(p.renderers) > 2:
+    # Recalculate decision boundaries
+    mask = np.array(new_data["color"]) != "grey"
+    X_new = np.column_stack((np.array(new_data["x"])[mask], np.array(new_data["y"])[mask]))
+    y_new = np.array(new_data["class"])[mask]
+
+    xx, yy, Z = calculate_boundaries(X_new, y_new)
+    if Z is not None:
+        p.renderers = [r for r in p.renderers if not isinstance(r, Image)]
+        if len(p.renderers) > 2:
                 p.renderers.remove(p.renderers[-1])
-            p.image(image=[Z], x=xx.min(), y=yy.min(), dw=xx.max()-xx.min(),
-                    dh=yy.max()-yy.min(), palette=["blue", "red"], alpha=0.3)
+        p.image(image=[Z], x=xx.min(), y=yy.min(), dw=xx.max()-xx.min(),
+                dh=yy.max()-yy.min(), palette=["blue", "red"], alpha=0.3)
 
-source.selected.on_change("indices", remove_point)
+    # Clear the selection and stack
+    source.selected.indices = []
+    selected_source.data = {"x": [], "y": [], "class": []}
+
+# Attach callbacks
+source.selected.on_change("indices", update_selection)
+confirm_button.on_click(confirm_selection)
 
 # Layout and show
-layout = column(p)
+layout = column(p, data_table, confirm_button)
 curdoc().add_root(layout)
-show(layout)
