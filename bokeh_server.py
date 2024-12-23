@@ -72,14 +72,20 @@ def update_selection(attr, old, new):
     temp_data = {"x": [], "y": [], "class": [], "status": []}
     new_data = source.data.copy()
     for idx in selected_indices:
-        temp_data["x"].append(new_data["x"][idx])
-        temp_data["y"].append(new_data["y"][idx])
-        temp_data["class"].append(new_data["class"][idx])
-        if new_data["color"][idx] != 'grey':
-            temp_data["status"].append('removing')
+        if new_data["color"][idx] == 'red':
+            if new_data["class"][idx] == 0:
+                new_data["color"][idx] = "blue"
+            else:
+                new_data["color"][idx] = "green"
         else:
-            temp_data["status"].append('adding')
-        new_data["color"][idx] = "red"
+            temp_data["x"].append(new_data["x"][idx])
+            temp_data["y"].append(new_data["y"][idx])
+            temp_data["class"].append(new_data["class"][idx])
+            if new_data["color"][idx] != 'grey':
+                temp_data["status"].append('removing')
+            else:
+                temp_data["status"].append('adding')
+            new_data["color"][idx] = "red"
     source.data = new_data
     selected_source.stream(temp_data)
     ind.extend(selected_indices)
