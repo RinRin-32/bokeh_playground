@@ -58,8 +58,6 @@ p.scatter("x", "y", size=8, source=source, color="color")
 
 # Table for previewing selected points
 columns = [
-    TableColumn(field="x", title="X"),
-    TableColumn(field="y", title="Y"),
     TableColumn(field="class", title="Class"),
     TableColumn(field="status", title="Status")
 ]
