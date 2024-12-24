@@ -1,6 +1,6 @@
 import numpy as np
 from bokeh.plotting import figure, curdoc
-from bokeh.models import ColumnDataSource, Button, Div, DataTable, TableColumn, Image
+from bokeh.models import ColumnDataSource, Button, Div, DataTable, TableColumn, Image, GlyphRenderer
 from bokeh.layouts import column, row
 
 class DecisionBoundaryVisualizer:
@@ -42,36 +42,48 @@ class DecisionBoundaryVisualizer:
         self.plot = figure(title="Interactive 2D Classification Visualization", width=600, height=600, tools="tap,box_select,lasso_select")
 
         # Set up initial decision boundary plot
-        self.xx, self.yy, self.Z = self.calculate_boundaries(self.X, self.y)
+        self.boundary_x, self.boundary_y= self.calculate_boundaries(self.X, self.y)
 
         # Create plot layout
         self.plot.scatter("x", "y", size=8, source=self.source, color="color", marker="marker")
-        if self.Z is not None:
-            self.plot.image(image=[self.Z], x=self.xx.min(), y=self.yy.min(), dw=self.xx.max()-self.xx.min(),
-                            dh=self.yy.max()-self.yy.min(), palette=["blue", "red"], alpha=0.3)
+        if self.boundary_x is not None and self.boundary_y is not None:
+            self.plot.line(x=self.boundary_x, y=self.boundary_y, line_width=2, color="black")
 
         # Add selection functionality
         self.ind = []
         self.setup_callbacks()
 
-    def calculate_boundaries(self, X_new, y_new):
+    def calculate_boundaries(self, X, y):
         """
         Calculate decision boundaries using the model.
         """
         # Fit the model
-        unique_classes = np.unique(y_new)
+        unique_classes = np.unique(y)
         if len(unique_classes) < 2:
+            self.reset_selection()
             self.message_div.text = "Error: At least two classes are required to fit the model."
-            return None, None, None
+            return None, None
         else:
             self.message_div.text = ""  # Clear the message
-            self.model.fit(X_new, y_new)
-            x_min, x_max = X_new[:, 0].min() - 1, X_new[:, 0].max() + 1
-            y_min, y_max = X_new[:, 1].min() - 1, X_new[:, 1].max() + 1
-            xx, yy = np.meshgrid(np.linspace(x_min, x_max, 100),
-                                 np.linspace(y_min, y_max, 100))
-            Z = self.model.predict(np.c_[xx.ravel(), yy.ravel()])
-            return xx, yy, Z.reshape(xx.shape)
+            self.model.fit(X, y)
+            
+            # Create a grid of points
+            x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+            y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+            xx, yy = np.meshgrid(np.linspace(x_min, x_max, 100), 
+                                np.linspace(y_min, y_max, 100))
+            
+            # Flatten the grid for predictions
+            grid = np.c_[xx.ravel(), yy.ravel()]
+            zz = self.model.predict_proba(grid)[:, 1]
+            zz = zz.reshape(xx.shape)
+            
+            # Find the decision boundary
+            boundary_mask = np.isclose(zz, 0.7, atol=0.04)
+            boundary_x, boundary_y = xx[boundary_mask], yy[boundary_mask]
+            
+            return boundary_x, boundary_y
+
 
     def update_selection(self, attr, old, new):
         """
@@ -143,13 +155,18 @@ class DecisionBoundaryVisualizer:
         X_new = np.column_stack((np.array(new_data["x"])[mask], np.array(new_data["y"])[mask]))
         y_new = np.array(new_data["class"])[mask]
 
-        xx, yy, Z = self.calculate_boundaries(X_new, y_new)
-        if Z is not None:
+        self.boundary_x, self.boundary_y = self.calculate_boundaries(X_new, y_new)
+        if self.boundary_x is not None and self.boundary_y is not None:
+
+            for renderer in self.plot.renderers:
+                if isinstance(renderer, (GlyphRenderer, Image)):
+                    renderer.glyph.line_alpha = 0.3  # Reduce line visibility
+
             self.plot.renderers = [r for r in self.plot.renderers if not isinstance(r, Image)]
             if len(self.plot.renderers) > 2:
                 self.plot.renderers.remove(self.plot.renderers[-1])
-            self.plot.image(image=[Z], x=xx.min(), y=yy.min(), dw=xx.max()-xx.min(),
-                            dh=yy.max()-yy.min(), palette=["blue", "red"], alpha=0.3)
+            
+            self.plot.line(x=self.boundary_x, y=self.boundary_y, line_width=2, color="black")
 
         # Clear the selection
         self.source.selected.indices = []
@@ -166,12 +183,11 @@ class DecisionBoundaryVisualizer:
         self.source.data = new_data
 
         # Recalculate decision boundaries
-        xx, yy, Z = self.calculate_boundaries(self.X, self.y)
-        if Z is not None:
+        self.boundary_x, self.boundary_y = self.calculate_boundaries(self.X, self.y)
+        if self.boundary_x is not None and self.boundary_y is not None:
             self.plot.renderers = [r for r in self.plot.renderers if not isinstance(r, Image)]
             self.plot.renderers = self.plot.renderers[0:2]
-            self.plot.image(image=[Z], x=xx.min(), y=yy.min(), dw=xx.max()-xx.min(),
-                            dh=yy.max()-yy.min(), palette=["blue", "red"], alpha=0.3)
+            self.plot.line(x=self.boundary_x, y=self.boundary_y, line_width=2, color="black")
 
         # Clear the selection
         self.source.selected.indices = []
