@@ -92,10 +92,12 @@ def update_selection(attr, old, new):
                 temp_data["class"].append(new_data["class"][idx])
                 if new_data["color"][idx] != 'grey':
                     temp_data["status"].append('removing')
+                    new_data["prev"][idx] = new_data["color"][idx]
+                    new_data["color"][idx] = "red"
                 else:
                     temp_data["status"].append('adding')
-                new_data["prev"][idx] = new_data["color"][idx]
-                new_data["color"][idx] = "red"
+                    new_data["prev"][idx] = new_data["color"][idx]
+                    new_data["color"][idx] = "lime"
                 remaining_indices.append(idx)
         else:
             if new_data["color"][idx] == 'red':
@@ -106,10 +108,12 @@ def update_selection(attr, old, new):
                 temp_data["class"].append(new_data["class"][idx])
                 if new_data["color"][idx] != 'grey':
                     temp_data["status"].append('removing')
+                    new_data["prev"][idx] = new_data["color"][idx]
+                    new_data["color"][idx] = "red"
                 else:
                     temp_data["status"].append('adding')
-                new_data["prev"][idx] = new_data["color"][idx]
-                new_data["color"][idx] = "red"
+                    new_data["prev"][idx] = new_data["color"][idx]
+                    new_data["color"][idx] = " lime"
     source.data = new_data
     selected_source.stream(temp_data)
     #ind.extend(selected_indices)
