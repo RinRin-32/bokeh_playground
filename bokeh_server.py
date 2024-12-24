@@ -145,6 +145,7 @@ def confirm_selection():
     # Clear the selection and stack
     source.selected.indices = []
     selected_source.data = {"x": [], "y": [], "class": [], "status": []}
+    ind.clear()
 
 # Callback for resetting all selections
 def reset_selection():
