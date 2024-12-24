@@ -4,7 +4,7 @@ from bokeh.models import ColumnDataSource, Button, Div, DataTable, TableColumn, 
 from bokeh.layouts import column, row
 
 class DecisionBoundaryVisualizer:
-    def __init__(self, model, X, y, classes, colors, n_samples=200):
+    def __init__(self, model, X, y, classes, colors, markers, n_samples=200):
         """
         Initialize the visualizer with the model and data.
         
@@ -29,6 +29,7 @@ class DecisionBoundaryVisualizer:
             "class": y,
             "color": [colors[int(cls)] for cls in y],
             "prev": [colors[int(cls)] for cls in y],
+            "marker": [markers[int(cls)] for cls in y]
         })
         self.selected_source = ColumnDataSource(data={"x": [], "y": [], "class": [], "status": []})
 
@@ -44,7 +45,7 @@ class DecisionBoundaryVisualizer:
         self.xx, self.yy, self.Z = self.calculate_boundaries(self.X, self.y)
 
         # Create plot layout
-        self.plot.scatter("x", "y", size=8, source=self.source, color="color")
+        self.plot.scatter("x", "y", size=8, source=self.source, color="color", marker="marker")
         if self.Z is not None:
             self.plot.image(image=[self.Z], x=self.xx.min(), y=self.yy.min(), dw=self.xx.max()-self.xx.min(),
                             dh=self.yy.max()-self.yy.min(), palette=["blue", "red"], alpha=0.3)

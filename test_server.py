@@ -25,6 +25,7 @@ y = np.hstack((y0, y1))
 model = MLPClassifier(hidden_layer_sizes=(50, 50, 100), max_iter=300, random_state=42)
 classes = [0, 1]
 colors = ["blue", "green"]
+markers = ["circle", "square"]
 
-visualizer = DecisionBoundaryVisualizer(model, X, y, classes, colors)
+visualizer = DecisionBoundaryVisualizer(model, X, y, classes, colors, markers)
 curdoc().add_root(visualizer.layout())
