@@ -180,5 +180,6 @@ confirm_button.on_click(confirm_selection)
 reset_button.on_click(reset_selection)
 
 # Layout and show
-layout = column(p, data_table, row(confirm_button, reset_button), message_div)
+#layout = column(p, data_table, row(confirm_button, reset_button), message_div)
+layout = column(p, row(confirm_button, reset_button), message_div)
 curdoc().add_root(layout)
