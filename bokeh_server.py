@@ -168,8 +168,7 @@ def reset_selection():
     xx, yy, Z = calculate_boundaries(X, y, model)
     if Z is not None:
         p.renderers = [r for r in p.renderers if not isinstance(r, Image)]
-        if len(p.renderers) > 2:
-            p.renderers.remove(p.renderers[-1])
+        p.renderers = p.renderers[0:2]
         p.image(image=[Z], x=xx.min(), y=yy.min(), dw=xx.max()-xx.min(),
                 dh=yy.max()-yy.min(), palette=["blue", "red"], alpha=0.3)
 
