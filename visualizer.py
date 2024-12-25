@@ -161,6 +161,7 @@ class DecisionBoundaryVisualizer:
             for renderer in self.plot.renderers:
                 if isinstance(renderer, (GlyphRenderer, Image)):
                     renderer.glyph.line_alpha = 0.3  # Reduce line visibility
+                    # For some reason, on first launch, the line wouldn't reduce visibility but launching the server after that solves it?
 
             self.plot.renderers = [r for r in self.plot.renderers if not isinstance(r, Image)]
             if len(self.plot.renderers) > 2:
