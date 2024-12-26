@@ -56,8 +56,8 @@ markers = ["circle", "square"]
 
 # Define the regression line coordinates (replace these with your own coordinates)
 line_coords = {
-    'x_vals': [-15, 1, 15],
-    'y_vals': [-15, 1, 15]
+    'x_vals': [0, 0.5, 1],
+    'y_vals': [0, 0.5, 1]
 }
 
 # Create the visualizer instances

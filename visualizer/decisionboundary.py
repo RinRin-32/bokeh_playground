@@ -5,39 +5,26 @@ import numpy as np
 
 class DecisionBoundaryVisualizer:
     def __init__(self, model, shared_source):
-        """
-        Initializes the DecisionBoundaryVisualizer.
-        Args:
-        - model: The trained model (e.g., MLPClassifier).
-        - shared_source: Shared ColumnDataSource for syncing data across modules.
-        """
         self.model = model
         self.source = shared_source
 
-        # Assuming that the 'x' and 'y' are just two of the features. 
-        # If your model expects more features, you should add them to X as well.
-        self.X = np.column_stack([self.source.data[feature] for feature in self.source.data if feature not in ['id', 'class', 'color', 'marker']])
+        self.X = np.column_stack([self.source.data[feature] for feature in self.source.data if feature not in ['id', 'class', 'color', 'marker', 'estimated_deviation', 'true_deviation', 'bpe', 'bls']])
         self.y = self.source.data['class']
 
         self.classes = np.unique(self.y) 
         self.message_div = Div(text="", width=400, height=50, styles={"color": "red"})
 
-        self.plot = figure(title="Interactive 2D Classification Visualization", width=600, height=600, tools="tap,box_select,lasso_select")
+        self.plot = figure(title="Interactive 2D Classification Visualization", width=600, height=600, tools="tap,box_select")
 
-        # Create the initial plot
         self.boundary_x, self.boundary_y = self.calculate_boundaries(self.X, self.y)
 
         self.plot.scatter("x", "y", size=8, source=self.source, color="color", marker="marker")
         if self.boundary_x is not None and self.boundary_y is not None:
             self.plot.line(x=self.boundary_x, y=self.boundary_y, line_width=2, color="black")
         
-        # Button to update the decision boundary
-        #self.update_button = Button(label="Update Boundary", width=200)
-        #self.update_button.on_click(self.update)
         self.source.on_change('data', self.update)
         
     def calculate_boundaries(self, X, y):
-        # Debugging: Print the boundary values
         print("Calculating boundaries...")
         unique_classes = np.unique(y)
         if len(unique_classes) < 2:
