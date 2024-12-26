@@ -72,7 +72,6 @@ sensitivity_layout = column(sensitivity_visualizer.get_layout(), width=600)
 
 # Combine the layouts in a row
 layout = row(memory_map_layout, decision_boundary_layout, sensitivity_layout)
-#layout = row(memory_map_layout, decision_boundary_layout)
 
 # Add the combined layout to the Bokeh document
 curdoc().add_root(layout)

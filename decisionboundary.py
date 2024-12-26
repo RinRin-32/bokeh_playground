@@ -5,16 +5,6 @@ from bokeh.layouts import column, row
 
 class DecisionBoundaryVisualizer:
     def __init__(self, model, X, y, classes, colors, markers, n_samples=200):
-        """
-        Initialize the visualizer with the model and data.
-        
-        :param model: The classification model (e.g., MLPClassifier).
-        :param X: Input features (data points).
-        :param y: Target labels.
-        :param classes: List of classes (for coloring the plot).
-        :param colors: List of colors corresponding to the classes.
-        :param n_samples: Number of samples to use in the plot (default is 200).
-        """
         self.model = model
         self.X = X
         self.y = y
