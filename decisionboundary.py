@@ -1,6 +1,6 @@
 import numpy as np
 from bokeh.plotting import figure, curdoc
-from bokeh.models import ColumnDataSource, Button, Div, DataTable, TableColumn, Image, GlyphRenderer
+from bokeh.models import ColumnDataSource, Button, Div, Image, GlyphRenderer
 from bokeh.layouts import column, row
 
 class DecisionBoundaryVisualizer:

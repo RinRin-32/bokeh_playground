@@ -1,7 +1,7 @@
 from sklearn.neural_network import MLPClassifier
 import numpy as np
 from bokeh.plotting import curdoc
-from visualizer import DecisionBoundaryVisualizer
+from decisionboundary import DecisionBoundaryVisualizer
 
 
 n_samples = 200
