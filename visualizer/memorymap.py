@@ -32,7 +32,10 @@ class MemoryMapVisualizer:
 
         for idx in range(len(new_data['color'])):
             if idx in selected_indices:
-                new_data["color"][idx] = "red"
+                if new_data["color"][idx] != "red":
+                    new_data["color"][idx] = "red"
+                else:
+                    new_data["color"][idx] = self.colors[int(new_data["class"][idx])]
 
         self.source.data = new_data
         self.ind.extend(selected_indices)

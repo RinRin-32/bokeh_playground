@@ -24,7 +24,7 @@ y1 = np.ones(n_samples)
 X = np.vstack((x0, x1))
 y = np.hstack((y0, y1))'''
 
-X,y = make_moons(n_samples=200, noise=0.1, random_state=42)
+X,y = make_moons(n_samples=200, noise=0.2, random_state=42)
 
 # Generate IDs
 ids = list(range(len(X)))
