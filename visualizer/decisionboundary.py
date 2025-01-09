@@ -28,10 +28,8 @@ class DecisionBoundaryVisualizer:
         )
 
         self.boundary_source = ColumnDataSource(data=dict(xs=[], ys=[]))
-        self.previous_boundary_source = ColumnDataSource(data=dict(xs=[], ys=[]))
 
         self.plot.scatter("x", "y", size=8, source=self.source, color="color", marker="marker")
-        self.plot.multi_line(xs="xs", ys="ys", source=self.previous_boundary_source, line_width=2, color="grey", line_alpha=0.5)
         self.plot.multi_line(xs="xs", ys="ys", source=self.boundary_source, line_width=2, color="black")
 
         xx, yy, zz = self.calculate_boundaries(self.X, self.y)
@@ -71,8 +69,6 @@ class DecisionBoundaryVisualizer:
     def update_boundary(self, xx, yy, zz):
         if xx is not None and yy is not None and zz is not None:
             xs, ys = self.extract_boundary_lines(xx, yy, zz)
-            # Copy current boundary to previous before updating
-            self.previous_boundary_source.data = dict(self.boundary_source.data)
             self.boundary_source.data = {"xs": xs, "ys": ys}
         else:
             self.boundary_source.data = {"xs": [], "ys": []}
