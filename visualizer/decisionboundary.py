@@ -16,11 +16,11 @@ class DecisionBoundaryVisualizer:
 
         self.plot = figure(title="Interactive 2D Classification Visualization", width=600, height=600, tools="tap,box_select")
 
-        self.boundary_x, self.boundary_y = self.calculate_boundaries(self.X, self.y)
+        self.boundary_x, self.boundary_y, zz = self.calculate_boundaries(self.X, self.y)
 
         self.plot.scatter("x", "y", size=8, source=self.source, color="color", marker="marker")
         if self.boundary_x is not None and self.boundary_y is not None:
-            self.plot.line(x=self.boundary_x, y=self.boundary_y, line_width=2, color="black")
+            self.plot.contour(x=self.boundary_x, y=self.boundary_y, z = zz, levels=np.linspace(self.X[:, 0].min() - 1, self.X[:, 0].max() + 1, 10), line_width=2, line_color="black")
         
         self.source.on_change('data', self.update)
         
@@ -34,19 +34,19 @@ class DecisionBoundaryVisualizer:
             self.message_div.text = ""
             self.model.fit(X, y)
             
-            x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
-            y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
-            xx, yy = np.meshgrid(np.linspace(x_min, x_max, 100), 
-                                np.linspace(y_min, y_max, 100))
+            x_min, x_max = self.X[:, 0].min() - 1, self.X[:, 0].max() + 1
+            y_min, y_max = self.X[:, 1].min() - 1, self.X[:, 1].max() + 1
+            xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.01), 
+                                np.arange(y_min, y_max, 0.01))
             
             grid = np.c_[xx.ravel(), yy.ravel()]
-            zz = self.model.predict_proba(grid)[:, 1]
+            zz = self.model.predict(grid)
             zz = zz.reshape(xx.shape)
             
-            boundary_mask = np.isclose(zz, 0.7, atol=0.04)
-            boundary_x, boundary_y = xx[boundary_mask], yy[boundary_mask]
+            #boundary_mask = np.isclose(zz, 0.7, atol=0.04)
+            #boundary_x, boundary_y = xx[boundary_mask], yy[boundary_mask]
 
-            return boundary_x, boundary_y
+            return xx, yy, zz
 
         
     def update(self, attr, old, new):
@@ -57,7 +57,7 @@ class DecisionBoundaryVisualizer:
         X_new = np.vstack((x_new, y_new)).T
         y_new = np.array(self.source.data["class"])[mask].flatten()
 
-        self.boundary_x, self.boundary_y = self.calculate_boundaries(X_new, y_new)
+        self.boundary_x, self.boundary_y, zz = self.calculate_boundaries(X_new, y_new)
         if self.boundary_x is not None and self.boundary_y is not None:
     
             for renderer in self.plot.renderers:
@@ -69,7 +69,7 @@ class DecisionBoundaryVisualizer:
             if len(self.plot.renderers) > 2:
                 self.plot.renderers.remove(self.plot.renderers[-1])
             
-            self.plot.line(x=self.boundary_x, y=self.boundary_y, line_width=2, color="black")
+            self.plot.contour(x=self.boundary_x, y=self.boundary_y, z=zz, levels=np.linspace(self.X[:, 0].min() - 1, self.X[:, 0].max() + 1, 10), line_width=2, line_color="black")
         
     def get_layout(self):
         return column(self.plot, self.message_div)

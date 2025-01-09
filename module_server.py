@@ -6,12 +6,13 @@ from bokeh.models import ColumnDataSource
 from visualizer.decisionboundary import DecisionBoundaryVisualizer
 from visualizer.memorymap import MemoryMapVisualizer
 from visualizer.sensitivity import SensitivityVisualizer
+from sklearn.datasets import make_moons
 
 # Generate random 2D data
 np.random.seed(42)
 n_samples = 200
 
-# Class 0
+'''# Class 0
 x0 = np.random.normal(loc=5.0, scale=3.0, size=(n_samples, 2))
 y0 = np.zeros(n_samples)
 
@@ -21,7 +22,9 @@ y1 = np.ones(n_samples)
 
 # Combine data
 X = np.vstack((x0, x1))
-y = np.hstack((y0, y1))
+y = np.hstack((y0, y1))'''
+
+X,y = make_moons(n_samples=200, noise=0.1, random_state=42)
 
 # Generate IDs
 ids = list(range(len(X)))
@@ -47,7 +50,7 @@ shared_source = ColumnDataSource(data={
 })
 
 # Train a model
-model = MLPClassifier(hidden_layer_sizes=(50, 50, 100), max_iter=300, random_state=42)
+model = MLPClassifier(hidden_layer_sizes=(500, 300), max_iter=500, random_state=42)
 
 # Set up classes, colors, and markers
 classes = [0, 1]
