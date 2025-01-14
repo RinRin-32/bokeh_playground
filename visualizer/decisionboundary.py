@@ -17,15 +17,12 @@ from lib.datasets import get_dataset
 from lib.utils import get_quick_loader
 
 from torch.utils.data import DataLoader
+from lib.models import get_model
+from ivon import IVON as IBLR
 
 class DecisionBoundaryVisualizer:
-    def __init__(self, model, optim, scheduler, epoch, shared_source):
-        self.model = model
+    def __init__(self, shared_source):
         self.source = shared_source
-
-        self.optim = optim
-        self.scheduler = scheduler
-        self.epoch = epoch
 
         self.X = np.column_stack([self.source.data[feature] for feature in self.source.data if feature not in ['id', 'class', 'color', 'marker', 'estimated_deviation', 'true_deviation', 'bpe', 'bls']])
         self.y = self.source.data['class']
@@ -62,11 +59,21 @@ class DecisionBoundaryVisualizer:
             self.message_div.text = "Error: At least two classes are required to fit the model."
             return None, None, None
         else:
+
+            input_size = 2
+            nc = 2
+            self.model = get_model('small_mlp', nc, input_size, 'cuda', 1)
+
+            optim = IBLR(self.model.parameters(), lr=1e-2, mc_samples=1, ess=len(X), weight_decay=60/len(X),
+                                beta1=0.9, beta2=0.99999, hess_init=0.1)
+
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=20, eta_min=1e-4)
+
             self.message_div.text = ""
             criterion = nn.CrossEntropyLoss(reduction='mean').to('cuda')
             ds_train, ds_test, transform_train = get_dataset('MOON', return_transform=True, noise=0.2)
-            trainloader = get_quick_loader(DataLoader(ds_train, batch_size=256), device='cuda') # training
-            self.model, _ = train_model(self.model, criterion, self.optim, self.scheduler, trainloader, self.epoch, 799, 60, 'cuda', False)
+            trainloader = get_quick_loader(DataLoader(ds_train, batch_size=1), device='cuda') # training
+            self.model, _ = train_model(self.model, criterion, optim, scheduler, trainloader, 20, 799, 60, 'cuda', False)
             self.model.eval()
             
             x_min, x_max = self.X[:, 0].min() - 1, self.X[:, 0].max() + 1
@@ -74,12 +81,18 @@ class DecisionBoundaryVisualizer:
             xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.01), 
                                  np.arange(y_min, y_max, 0.01))
             
-            grid = [xx.ravel(), yy.ravel()]
+            grid = np.c_[xx.ravel(), yy.ravel()]
             grid = torch.tensor(grid, dtype=torch.float32).to('cuda')
-            zz = self.model(grid)
-            zz = zz.reshape(xx.shape)
             
-            return xx, yy, zz.detach().cpu().numpy()
+            with torch.no_grad():
+                logits = self.model(grid)
+            
+            probabilities = torch.softmax(logits, dim=1)
+            zz = torch.argmax(probabilities, dim=1)
+            zz = zz.cpu().numpy().reshape(xx.shape)
+            print(zz)
+            
+            return xx, yy, zz
 
     def extract_boundary_lines(self, xx, yy, zz):
         contours = measure.find_contours(zz, level=0.5)  # Assuming boundary at 0.5 probability

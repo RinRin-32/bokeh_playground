@@ -74,16 +74,6 @@ shared_source = ColumnDataSource(data={
 #model = MLPClassifier(hidden_layer_sizes=(500, 300), max_iter=10, random_state=42)
 #model = MLPClassifier(hidden_layer_sizes=(500, 300), max_iter=20, random_state=42)
 
-input_size = 2
-nc = 2
-
-net = get_model('small_mlp', nc, input_size, 'cuda', 1)
-
-optim = IBLR(net.parameters(), lr=1e-2, mc_samples=1, ess=len(X), weight_decay=60/len(X),
-                      beta1=0.9, beta2=0.99999, hess_init=0.1)
-
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=20, eta_min=1e-4)
-
 # Set up classes, colors, and markers
 classes = [0, 1]
 colors = ["blue", "green"]
@@ -97,7 +87,7 @@ line_coords = {
 
 # Create the visualizer instances
 memory_map_visualizer = MemoryMapVisualizer(shared_source, colors)
-decision_boundary_visualizer = DecisionBoundaryVisualizer(net, optim, scheduler, 20, shared_source)
+decision_boundary_visualizer = DecisionBoundaryVisualizer(shared_source)
 sensitivity_visualizer = SensitivityVisualizer(shared_source, line_coords)
 
 # Create the layout with Memory Map on top left, Decision Boundary on bottom half, and Sensitivity on the right
