@@ -19,13 +19,9 @@ from lib.utils import get_quick_loader
 from torch.utils.data import DataLoader
 
 class DecisionBoundaryVisualizer:
-    def __init__(self, model, optim, scheduler, epoch, shared_source):
+    def __init__(self, model, shared_source):
         self.model = model
         self.source = shared_source
-
-        self.optim = optim
-        self.scheduler = scheduler
-        self.epoch = epoch
 
         self.X = np.column_stack([self.source.data[feature] for feature in self.source.data if feature not in ['id', 'class', 'color', 'marker', 'estimated_deviation', 'true_deviation', 'bpe', 'bls']])
         self.y = self.source.data['class']
@@ -63,23 +59,18 @@ class DecisionBoundaryVisualizer:
             return None, None, None
         else:
             self.message_div.text = ""
-            criterion = nn.CrossEntropyLoss(reduction='mean').to('cuda')
-            ds_train, ds_test, transform_train = get_dataset('MOON', return_transform=True, noise=0.2)
-            trainloader = get_quick_loader(DataLoader(ds_train, batch_size=256), device='cuda') # training
-            self.model, _ = train_model(self.model, criterion, self.optim, self.scheduler, trainloader, self.epoch, 799, 60, 'cuda', False)
-            self.model.eval()
+            self.model.fit(X,y)
             
             x_min, x_max = self.X[:, 0].min() - 1, self.X[:, 0].max() + 1
             y_min, y_max = self.X[:, 1].min() - 1, self.X[:, 1].max() + 1
             xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.01), 
                                  np.arange(y_min, y_max, 0.01))
             
-            grid = [xx.ravel(), yy.ravel()]
-            grid = torch.tensor(grid, dtype=torch.float32).to('cuda')
-            zz = self.model(grid)
+            grid = np.c_[xx.ravel(), yy.ravel()]
+            zz = self.model.predict(grid)
             zz = zz.reshape(xx.shape)
             
-            return xx, yy, zz.detach().cpu().numpy()
+            return xx, yy, zz
 
     def extract_boundary_lines(self, xx, yy, zz):
         contours = measure.find_contours(zz, level=0.5)  # Assuming boundary at 0.5 probability
