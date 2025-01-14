@@ -1,30 +1,34 @@
-from bokeh.plotting import curdoc
-from bokeh.layouts import column, row
-from sklearn.neural_network import MLPClassifier
+import os
+import sys
+import pickle
+import argparse
 import numpy as np
-from bokeh.models import ColumnDataSource
+
+import tqdm
+
+from bokeh.plotting import curdoc
+
+import torch
+from torch import nn
+from torch.nn.utils import parameters_to_vector, vector_to_parameters
+from torch.utils.data import DataLoader, Subset
+from torch.optim import Adam
+
 from visualizer.decisionboundary import DecisionBoundaryVisualizer
 from visualizer.memorymap import MemoryMapVisualizer
 from visualizer.sensitivity import SensitivityVisualizer
-from sklearn.datasets import make_moons
-import pickle
-import torch
 
-# Generate random 2D data
-np.random.seed(42)
-n_samples = 200
+from bokeh.models import ColumnDataSource
 
-'''# Class 0
-x0 = np.random.normal(loc=5.0, scale=3.0, size=(n_samples, 2))
-y0 = np.zeros(n_samples)
+from bokeh.layouts import column, row
 
-# Class 1
-x1 = np.random.normal(loc=-5.0, scale=4.5, size=(n_samples, 2))
-y1 = np.ones(n_samples)
+from ivon import IVON as IBLR
 
-# Combine data
-X = np.vstack((x0, x1))
-y = np.hstack((y0, y1))'''
+sys.path.append("../memory-perturbation")
+from lib.models import get_model
+from lib.datasets import get_dataset
+from lib.utils import get_quick_loader, predict_test, flatten, predict_nll_hess, train_model, predict_train2, train_network
+from lib.variances import get_covariance_from_iblr, get_covariance_from_adam, get_pred_vars_optim, get_pred_vars_laplace
 
 
 dir = 'data/'
@@ -47,8 +51,7 @@ ids = list(range(len(X)))
 
 softmax = deviation_dict['softmax_deviations']
 
-np.random.seed(42)  # For reproducibility
-true_deviation = softmax  # Random values between 0 and 1
+true_deviation = softmax
 bpe = scores_dict['bpe']
 bls = scores_dict['bls']
 
@@ -69,7 +72,17 @@ shared_source = ColumnDataSource(data={
 # Train a model
 #model = MLPClassifier(hidden_layer_sizes=(32, 16), max_iter=10, random_state=42)
 #model = MLPClassifier(hidden_layer_sizes=(500, 300), max_iter=10, random_state=42)
-model = MLPClassifier(hidden_layer_sizes=(500, 300), max_iter=20, random_state=42)
+#model = MLPClassifier(hidden_layer_sizes=(500, 300), max_iter=20, random_state=42)
+
+input_size = 2
+nc = 2
+
+net = get_model('small_mlp', nc, input_size, 'cuda', 1)
+
+optim = IBLR(net.parameters(), lr=1e-2, mc_samples=1, ess=len(X), weight_decay=60/len(X),
+                      beta1=0.9, beta2=0.99999, hess_init=0.1)
+
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=20, eta_min=1e-4)
 
 # Set up classes, colors, and markers
 classes = [0, 1]
@@ -84,7 +97,7 @@ line_coords = {
 
 # Create the visualizer instances
 memory_map_visualizer = MemoryMapVisualizer(shared_source, colors)
-decision_boundary_visualizer = DecisionBoundaryVisualizer(model, shared_source)
+decision_boundary_visualizer = DecisionBoundaryVisualizer(net, optim, scheduler, 20, shared_source)
 sensitivity_visualizer = SensitivityVisualizer(shared_source, line_coords)
 
 # Create the layout with Memory Map on top left, Decision Boundary on bottom half, and Sensitivity on the right
