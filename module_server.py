@@ -7,6 +7,8 @@ from visualizer.decisionboundary import DecisionBoundaryVisualizer
 from visualizer.memorymap import MemoryMapVisualizer
 from visualizer.sensitivity import SensitivityVisualizer
 from sklearn.datasets import make_moons
+import pickle
+import torch
 
 # Generate random 2D data
 np.random.seed(42)
@@ -24,16 +26,31 @@ y1 = np.ones(n_samples)
 X = np.vstack((x0, x1))
 y = np.hstack((y0, y1))'''
 
-X,y = make_moons(n_samples=200, noise=0.2, random_state=42)
 
+dir = 'data/'
+file = open(dir + 'moon_large_mlp_epoch20_05_memory_maps_scores.pkl', 'rb')
+scores_dict = pickle.load(file)
+file.close()
+
+
+file = open(dir + 'moon_large_mlp_epoch20_05_memory_maps_retrain.pkl', 'rb')
+deviation_dict = pickle.load(file)
+file.close()
+
+#X,y = make_moons(n_samples=200, noise=5, random_state=42)
+
+X = scores_dict['X_train'].numpy()
+y = scores_dict['y_train'].numpy()
+estimated_deviation = scores_dict['sensitivities']
 # Generate IDs
 ids = list(range(len(X)))
 
+softmax = deviation_dict['softmax_deviations']
+
 np.random.seed(42)  # For reproducibility
-estimated_deviation = np.random.rand(len(X))  # Random values between 0 and 1
-true_deviation = np.random.rand(len(X))  # Random values between 0 and 1
-bpe = np.random.rand(len(X))  # Random values between 0 and 1
-bls = np.random.rand(len(X))  # Random values between 0 and 1
+true_deviation = softmax  # Random values between 0 and 1
+bpe = scores_dict['bpe']
+bls = scores_dict['bls']
 
 # Shared ColumnDataSource with random values for the new metrics
 shared_source = ColumnDataSource(data={
@@ -50,7 +67,11 @@ shared_source = ColumnDataSource(data={
 })
 
 # Train a model
-model = MLPClassifier(hidden_layer_sizes=(500, 300), max_iter=500, random_state=42)
+#model = MLPClassifier(hidden_layer_sizes=(32, 16), max_iter=10, random_state=42)
+#model = MLPClassifier(hidden_layer_sizes=(500, 300), max_iter=10, random_state=42)
+#model = MLPClassifier(hidden_layer_sizes=(500, 300), max_iter=20, random_state=42)
+
+model = 
 
 # Set up classes, colors, and markers
 classes = [0, 1]
@@ -59,8 +80,8 @@ markers = ["circle", "square"]
 
 # Define the regression line coordinates (replace these with your own coordinates)
 line_coords = {
-    'x_vals': [0, 0.5, 1],
-    'y_vals': [0, 0.5, 1]
+    'x_vals': [0, true_deviation.max()],
+    'y_vals': [0, true_deviation.max()]
 }
 
 # Create the visualizer instances

@@ -10,7 +10,9 @@ class SensitivityVisualizer:
 
     def create_plot(self):
         # Set up the figure
-        p = figure(title="Sensitivity Visualization", width=600, height=600)
+        p = figure(title="Sensitivity Visualization",
+                   width=600, height=600,
+                   tools='tap,box_select,box_zoom,reset,pan')
         p.xaxis.axis_label = 'True Deviation'
         p.yaxis.axis_label = 'Estimated Deviation'
 

@@ -7,7 +7,10 @@ class MemoryMapVisualizer:
         self.source = shared_source
 
         # Set up the plot
-        self.plot = figure(title="Memory Map Visualization", width=600, height=600, tools="tap,box_select")
+        self.plot = figure(title="Memory Map Visualization",
+                           width=600, height=600,
+                           tools="tap,box_select,box_zoom,reset,pan",
+                           active_drag="box_select")
         self.plot.xaxis.axis_label = 'BLS'  # Label for x-axis
         self.plot.yaxis.axis_label = 'BPE'
         self.plot.scatter("bls", "bpe", size=8, source=self.source, color="color", marker="marker")

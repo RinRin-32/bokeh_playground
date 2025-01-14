@@ -22,7 +22,8 @@ class DecisionBoundaryVisualizer:
         self.plot = figure(
             title="Interactive 2D Classification Visualization", 
             width=600, height=600, 
-            tools="tap,box_select",
+            tools="tap,box_select,box_zoom,reset",
+            active_drag="box_select",
             x_range=(x_min, x_max), 
             y_range=(y_min, y_max)
         )
