@@ -30,7 +30,7 @@ class MemoryMapVisualizer:
         self.inverse_button = Button(label="Invert Selection", button_type="primary")
         self.inverse_button.on_click(self.invert_selection)
 
-        self.message_div = Div(text="", width=400, height=50)
+        self.message_div = Div(text="", width=400, height=25)
         self.colors = colors
         self.ind = []
 
@@ -74,15 +74,25 @@ class MemoryMapVisualizer:
 
     def invert_selection(self):
         new_data = self.source.data.copy()
+        count = 0
 
         for idx in range(len(new_data["color"])):
             if new_data["color"][idx] != 'grey':
                 new_data["color"][idx] = 'grey'
+            elif new_data["color"][idx] == 'red':
+                pass
             else:
-                new_data["color"][idx] = self.colors[int(new_data["class"][idx])]
-
-        self.source.data = new_data
-        self.decisionboundaryvisualizer.update(None, None, None)
+                if new_data["color"][idx] != self.colors[int(new_data["class"][idx])]:
+                    new_data["color"][idx] = self.colors[int(new_data["class"][idx])]
+                else:
+                    count+=1
+        if count < len(new_data["color"]):
+            print("inverted")
+            self.source.data = new_data
+            self.decisionboundaryvisualizer.update(None, None, None)
+        else:
+            self.reset_selection
+        self.source.selected.indices = []
 
     def get_plot(self):
         return self.plot

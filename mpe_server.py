@@ -90,7 +90,7 @@ line_coords = {
 # Create the visualizer instances
 decision_boundary_visualizer = DecisionBoundaryVisualizer(shared_source)
 memory_map_visualizer = MemoryMapVisualizer(shared_source, colors, decision_boundary_visualizer)
-sensitivity_visualizer = SensitivityVisualizer(shared_source, line_coords)
+sensitivity_visualizer = SensitivityVisualizer(shared_source)
 
 # Create the layout with Memory Map on top left, Decision Boundary on bottom half, and Sensitivity on the right
 memory_map_layout = column(memory_map_visualizer.get_layout(), width=400)

@@ -1,11 +1,10 @@
 from bokeh.plotting import figure
 from bokeh.layouts import column
+import numpy as np
 
 class SensitivityVisualizer:
-    def __init__(self, shared_source, line_coords):
-
+    def __init__(self, shared_source):
         self.source = shared_source
-        self.line_coords = line_coords
         self.plot = self.create_plot()
 
     def create_plot(self):
@@ -21,21 +20,25 @@ class SensitivityVisualizer:
             x='true_deviation', y='estimated_deviation', color='color', marker='marker', size=8, source=self.source
         )
 
-        # Optionally, plot the regression line if provided
-        if self.line_coords is not None:
-            self.plot_regression_line(p)
+        # Plot the regression line based on the scatter plot data
+        self.plot_regression_line(p)
 
         return p
 
     def plot_regression_line(self, p):
-        if 'x_vals' in self.line_coords and 'y_vals' in self.line_coords:
-            x_vals = self.line_coords['x_vals']
-            y_vals = self.line_coords['y_vals']
+        # Extract data from the shared source
+        true_deviation = self.source.data['true_deviation']
+        estimated_deviation = self.source.data['estimated_deviation']
 
-            # Plot the regression line with a dotted style
-            #p.line(x_vals, y_vals, line_width=2, line_color="red", line_dash="dotted")
-        else:
-            raise ValueError("Invalid line coordinates provided. Please provide 'x_vals' and 'y_vals'.")
+        # Calculate the linear regression coefficients
+        slope, intercept = np.polyfit(true_deviation, estimated_deviation, 1)
+
+        # Generate x and y values for the regression line
+        x_vals = np.linspace(min(true_deviation), max(true_deviation), 100)
+        y_vals = slope * x_vals + intercept
+
+        # Plot the regression line with a dotted style
+        p.line(x_vals, y_vals, line_width=2, line_color="red", line_dash="dotted")
 
     def get_plot(self):
         return self.plot
