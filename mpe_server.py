@@ -32,12 +32,14 @@ from lib.variances import get_covariance_from_iblr, get_covariance_from_adam, ge
 
 
 dir = 'data/'
-file = open(dir + 'moon_large_mlp_epoch20_05_memory_maps_scores.pkl', 'rb')
+#file = open(dir + 'nonlinear_moon_50_memory_maps_scores.pkl', 'rb')
+file = open(dir + '30_epoch_mlp_memory_maps_scores.pkl', 'rb')
 scores_dict = pickle.load(file)
 file.close()
 
 
-file = open(dir + 'moon_large_mlp_epoch20_05_memory_maps_retrain.pkl', 'rb')
+#file = open(dir + 'nonlinear_moon_50_memory_maps_retrain.pkl', 'rb')
+file = open(dir + '30_epoch_mlp_memory_maps_retrain.pkl', 'rb')
 deviation_dict = pickle.load(file)
 file.close()
 
@@ -86,8 +88,8 @@ line_coords = {
 }
 
 # Create the visualizer instances
-memory_map_visualizer = MemoryMapVisualizer(shared_source, colors)
 decision_boundary_visualizer = DecisionBoundaryVisualizer(shared_source)
+memory_map_visualizer = MemoryMapVisualizer(shared_source, colors, decision_boundary_visualizer)
 sensitivity_visualizer = SensitivityVisualizer(shared_source, line_coords)
 
 # Create the layout with Memory Map on top left, Decision Boundary on bottom half, and Sensitivity on the right

@@ -10,7 +10,7 @@ import sys
 
 sys.path.append("../memory-perturbation")
 
-from lib.utils import train_model
+from lib.utils import train_model, predict_test
 
 from lib.datasets import get_dataset
 
@@ -50,7 +50,7 @@ class DecisionBoundaryVisualizer:
         xx, yy, zz = self.calculate_boundaries(self.X, self.y)
         self.update_boundary(xx, yy, zz)
 
-        self.source.on_change('data', self.update)
+        #self.source.on_change('data', self.update)
 
     def calculate_boundaries(self, X, y):
         print("Calculating boundaries...")
@@ -63,17 +63,15 @@ class DecisionBoundaryVisualizer:
             input_size = 2
             nc = 2
             self.model = get_model('small_mlp', nc, input_size, 'cuda', 1)
-
-            optim = IBLR(self.model.parameters(), lr=1e-2, mc_samples=1, ess=len(X), weight_decay=60/len(X),
-                                beta1=0.9, beta2=0.99999, hess_init=0.1)
-
-            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=20, eta_min=1e-4)
+            optim = IBLR(self.model.parameters(), lr=2, mc_samples=4, ess=800, weight_decay=1e-3,
+                                beta1=0.9, beta2=0.99999, hess_init=0.9)
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=30)
 
             self.message_div.text = ""
-            criterion = nn.CrossEntropyLoss(reduction='mean').to('cuda')
-            ds_train, ds_test, transform_train = get_dataset('MOON', return_transform=True, noise=0.2)
-            trainloader = get_quick_loader(DataLoader(ds_train, batch_size=1), device='cuda') # training
-            self.model, _ = train_model(self.model, criterion, optim, scheduler, trainloader, 20, 799, 60, 'cuda', False)
+            criterion = nn.CrossEntropyLoss().to('cuda')
+            ds_train = TensorDataset(torch.tensor(X, dtype=torch.float32), torch.tensor(y, dtype=torch.long))
+            trainloader = get_quick_loader(DataLoader(ds_train, batch_size=256, shuffle=False), device='cuda') # training
+            self.model, _ = train_model(self.model, criterion, optim, scheduler, trainloader, 30, 799, None, 'cuda')
             self.model.eval()
             
             x_min, x_max = self.X[:, 0].min() - 1, self.X[:, 0].max() + 1
@@ -90,7 +88,6 @@ class DecisionBoundaryVisualizer:
             probabilities = torch.softmax(logits, dim=1)
             zz = torch.argmax(probabilities, dim=1)
             zz = zz.cpu().numpy().reshape(xx.shape)
-            print(zz)
             
             return xx, yy, zz
 

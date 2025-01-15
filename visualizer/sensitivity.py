@@ -33,7 +33,7 @@ class SensitivityVisualizer:
             y_vals = self.line_coords['y_vals']
 
             # Plot the regression line with a dotted style
-            p.line(x_vals, y_vals, line_width=2, line_color="red", line_dash="dotted")
+            #p.line(x_vals, y_vals, line_width=2, line_color="red", line_dash="dotted")
         else:
             raise ValueError("Invalid line coordinates provided. Please provide 'x_vals' and 'y_vals'.")
 
