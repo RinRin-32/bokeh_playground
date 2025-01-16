@@ -1,18 +1,16 @@
 from bokeh.plotting import figure
-from bokeh.layouts import column, row
-from bokeh.models import Div, Button, ColumnDataSource, GlyphRenderer, Image
+from bokeh.layouts import column
+from bokeh.models import Div, ColumnDataSource
 import numpy as np
 from torch import nn
 import torch
 from torch.utils.data import TensorDataset
-from skimage import measure  # To extract contour lines
+from skimage import measure
 import sys
 
 sys.path.append("../memory-perturbation")
 
-from lib.utils import train_model, predict_test
-
-from lib.datasets import get_dataset
+from lib.utils import train_model
 
 from lib.utils import get_quick_loader
 
@@ -49,8 +47,6 @@ class DecisionBoundaryVisualizer:
 
         xx, yy, zz = self.calculate_boundaries(self.X, self.y)
         self.update_boundary(xx, yy, zz)
-
-        #self.source.on_change('data', self.update)
 
     def calculate_boundaries(self, X, y):
         print("Calculating boundaries...")
@@ -92,7 +88,7 @@ class DecisionBoundaryVisualizer:
             return xx, yy, zz
 
     def extract_boundary_lines(self, xx, yy, zz):
-        contours = measure.find_contours(zz, level=0.5)  # Assuming boundary at 0.5 probability
+        contours = measure.find_contours(zz, level=0.5)
         xs, ys = [], []
         for contour in contours:
             xs.append(xx[0, 0] + contour[:, 1] * (xx[0, -1] - xx[0, 0]) / zz.shape[1])

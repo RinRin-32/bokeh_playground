@@ -6,26 +6,11 @@ from bokeh.models import ColumnDataSource
 from visualizer.decisionboundary import DecisionBoundaryVisualizer
 from visualizer.memorymap import MemoryMapVisualizer
 from visualizer.sensitivity import SensitivityVisualizer
-from sklearn.datasets import make_moons
 import pickle
-import torch
 
 # Generate random 2D data
 np.random.seed(42)
 n_samples = 200
-
-'''# Class 0
-x0 = np.random.normal(loc=5.0, scale=3.0, size=(n_samples, 2))
-y0 = np.zeros(n_samples)
-
-# Class 1
-x1 = np.random.normal(loc=-5.0, scale=4.5, size=(n_samples, 2))
-y1 = np.ones(n_samples)
-
-# Combine data
-X = np.vstack((x0, x1))
-y = np.hstack((y0, y1))'''
-
 
 dir = 'data/'
 file = open(dir + 'moon_large_mlp_epoch20_05_memory_maps_scores.pkl', 'rb')
@@ -37,7 +22,6 @@ file = open(dir + 'moon_large_mlp_epoch20_05_memory_maps_retrain.pkl', 'rb')
 deviation_dict = pickle.load(file)
 file.close()
 
-#X,y = make_moons(n_samples=200, noise=5, random_state=42)
 
 X = scores_dict['X_train'].numpy()
 y = scores_dict['y_train'].numpy()
@@ -66,9 +50,6 @@ shared_source = ColumnDataSource(data={
     "bls": bls
 })
 
-# Train a model
-#model = MLPClassifier(hidden_layer_sizes=(32, 16), max_iter=10, random_state=42)
-#model = MLPClassifier(hidden_layer_sizes=(500, 300), max_iter=10, random_state=42)
 model = MLPClassifier(hidden_layer_sizes=(500, 300), max_iter=20, random_state=42)
 
 # Set up classes, colors, and markers
