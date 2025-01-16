@@ -30,7 +30,7 @@ class EvolvingBoundaryVisualizer:
         self.y = self.source.data['class']
 
         self.classes = np.unique(self.y) 
-        self.message_div = Div(text="", width=400, height=50, styles={"color": "red"})
+        self.message_div = Div(text="", width=400, height=50, styles={"color": "black"})
 
         x_min, x_max = self.X[:, 0].min() - 1, self.X[:, 0].max() + 1
         y_min, y_max = self.X[:, 1].min() - 1, self.X[:, 1].max() + 1
@@ -42,10 +42,11 @@ class EvolvingBoundaryVisualizer:
             y_range=(y_min, y_max)
         )
 
-        self.boundary_source = ColumnDataSource(data=dict(xs=[], ys=[]))
+        self.boundary_source = ColumnDataSource(data=dict(xs=[], ys=[], prev_xs=[], prev_ys=[]))
 
         self.plot.scatter("x", "y", size=8, source=self.source, color="color", marker="marker")
         self.plot.multi_line(xs="xs", ys="ys", source=self.boundary_source, line_width=2, color="black")
+        self.plot.multi_line(xs="prev_xs", ys="prev_ys", source=self.boundary_source, line_width=2, color="grey")
 
         self.model = get_model('small_mlp', 2, 2, 'cuda', 1)
         self.optim = IBLR(self.model.parameters(), lr=2, mc_samples=4, ess=800, weight_decay=1e-3,
@@ -121,9 +122,26 @@ class EvolvingBoundaryVisualizer:
     def update_boundary(self, xx, yy, zz):
         if xx is not None and yy is not None and zz is not None:
             xs, ys = self.extract_boundary_lines(xx, yy, zz)
-            self.boundary_source.data = {"xs": xs, "ys": ys}
+
+            # Update the ColumnDataSource with both the current and previous boundaries
+            current_data = self.boundary_source.data
+            if self.epoch>1:
+                prev_xs = current_data["xs"]
+                prev_ys = current_data["ys"]
+            
+                self.boundary_source.data = {
+                    "xs": xs,
+                    "ys": ys,
+                    "prev_xs": prev_xs,
+                    "prev_ys": prev_ys
+                }
+            else:
+                self.boundary_source.data = {
+                    "xs": xs,
+                    "ys": ys,
+                }
         else:
-            self.boundary_source.data = {"xs": [], "ys": []}
+            self.boundary_source.data = {"xs": [], "ys": [], "prev_xs": [], "prev_ys": []}
 
     def update(self, attr, old, new):
         xx, yy, zz = self.calculate_boundaries()
@@ -137,7 +155,7 @@ class EvolvingBoundaryVisualizer:
                           beta1=0.9, beta2=0.99999, hess_init=0.9)
         self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optim, T_max=30)
         self.criterion = nn.CrossEntropyLoss().to('cuda')
-        self.boundary_source.data = {"xs": [], "ys": []}
+        self.boundary_source.data = {"xs": [], "ys": [], "prev_xs": [], "prev_ys": []}
 
         xx, yy, zz = self.calculate_boundaries()
         self.update_boundary(xx, yy, zz)
