@@ -1,18 +1,6 @@
-import os
-import sys
 import pickle
-import argparse
-import numpy as np
-
-import tqdm
 
 from bokeh.plotting import curdoc
-
-import torch
-from torch import nn
-from torch.nn.utils import parameters_to_vector, vector_to_parameters
-from torch.utils.data import DataLoader, Subset
-from torch.optim import Adam
 
 from visualizer.decisionboundary import DecisionBoundaryVisualizer
 from visualizer.memorymap import MemoryMapVisualizer
@@ -21,14 +9,6 @@ from visualizer.sensitivity import SensitivityVisualizer
 from bokeh.models import ColumnDataSource
 
 from bokeh.layouts import column, row
-
-from ivon import IVON as IBLR
-
-sys.path.append("../memory-perturbation")
-from lib.models import get_model
-from lib.datasets import get_dataset
-from lib.utils import get_quick_loader, predict_test, flatten, predict_nll_hess, train_model, predict_train2, train_network
-from lib.variances import get_covariance_from_iblr, get_covariance_from_adam, get_pred_vars_optim, get_pred_vars_laplace
 
 
 dir = 'data/'
@@ -71,21 +51,10 @@ shared_source = ColumnDataSource(data={
     "bls": bls
 })
 
-# Train a model
-#model = MLPClassifier(hidden_layer_sizes=(32, 16), max_iter=10, random_state=42)
-#model = MLPClassifier(hidden_layer_sizes=(500, 300), max_iter=10, random_state=42)
-#model = MLPClassifier(hidden_layer_sizes=(500, 300), max_iter=20, random_state=42)
-
 # Set up classes, colors, and markers
 classes = [0, 1]
 colors = ["blue", "green"]
 markers = ["circle", "square"]
-
-# Define the regression line coordinates (replace these with your own coordinates)
-line_coords = {
-    'x_vals': [0, true_deviation.max()],
-    'y_vals': [0, true_deviation.max()]
-}
 
 # Create the visualizer instances
 decision_boundary_visualizer = DecisionBoundaryVisualizer(shared_source)

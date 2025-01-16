@@ -1,20 +1,18 @@
 from bokeh.plotting import figure
 from bokeh.layouts import column, row
-from bokeh.models import Div, Button, ColumnDataSource, GlyphRenderer, Image
+from bokeh.models import Div, Button, ColumnDataSource
 import numpy as np
 from torch import nn
 import torch
 from torch.utils.data import TensorDataset
-from skimage import measure  # To extract contour lines
+from skimage import measure
 import sys
 
 from bokeh.io import curdoc
 
 sys.path.append("../memory-perturbation")
 
-from lib.utils import train_model, predict_test
-
-from lib.datasets import get_dataset
+from lib.utils import train_model
 
 from lib.utils import get_quick_loader
 
