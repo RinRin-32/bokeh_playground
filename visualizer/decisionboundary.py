@@ -24,7 +24,7 @@ class DecisionBoundaryVisualizer:
     def __init__(self, shared_source):
         self.source = shared_source
 
-        self.X = np.column_stack([self.source.data[feature] for feature in self.source.data if feature not in ['id', 'class', 'color', 'marker', 'estimated_deviation', 'true_deviation', 'bpe', 'bls']])
+        self.X = np.column_stack([self.source.data[feature] for feature in self.source.data if feature in ['x', 'y']])
         self.y = self.source.data['class']
 
         self.classes = np.unique(self.y) 
