@@ -21,8 +21,11 @@ from lib.models import get_model
 from ivon import IVON as IBLR
 
 class EvolvingBoundaryVisualizer:
-    def __init__(self, shared_source):
+    def __init__(self, shared_source, mod1, mod2, epoch_steps, max_epochs=30):
         self.source = shared_source
+        self.mod1 = mod1
+        self.mod2 = mod2
+        self.epoch_steps = epoch_steps
 
         self.X = np.column_stack([self.source.data[feature] for feature in self.source.data if feature in ['x', 'y']])
         self.y = self.source.data['class']
@@ -56,10 +59,12 @@ class EvolvingBoundaryVisualizer:
         self.trainloader = get_quick_loader(DataLoader(self.ds_train, batch_size=256, shuffle=False), device='cuda')
 
         self.epoch = 0
-        self.max_epochs = 30
+        self.max_epochs = max_epochs
         self.running = False
 
         xx, yy, zz = self.calculate_boundaries()
+        self.mod1.update(0)
+        self.mod2.update(0)
         self.update_boundary(xx, yy, zz)
 
         # Buttons for control
@@ -106,6 +111,10 @@ class EvolvingBoundaryVisualizer:
             probabilities = torch.softmax(logits, dim=1)
             zz = torch.argmax(probabilities, dim=1)
             zz = zz.cpu().numpy().reshape(xx.shape)
+
+            if self.epoch % self.epoch_steps == 0:
+                self.mod1.update(self.epoch//self.epoch_steps)
+                self.mod2.update(self.epoch//self.epoch_steps)
 
             return xx, yy, zz
 
@@ -156,6 +165,8 @@ class EvolvingBoundaryVisualizer:
         self.boundary_source.data = {"xs": [], "ys": [], "prev_xs": [], "prev_ys": []}
 
         xx, yy, zz = self.calculate_boundaries()
+        self.mod1.update(0)
+        self.mod2.update(0)
         self.update_boundary(xx, yy, zz)
         self.message_div.text = "Reset complete. Ready to start."
 
@@ -167,10 +178,10 @@ class EvolvingBoundaryVisualizer:
         )
 
     def animate(self):
-        if self.epoch < self.max_epochs:
+        if self.epoch <= self.max_epochs:
             xx, yy, zz = self.calculate_boundaries()
             self.update_boundary(xx, yy, zz)
-            self.message_div.text = f"Epoch {self.epoch}/{self.max_epochs} completed."
+            self.message_div.text = f"Epoch {self.epoch-1}/{self.max_epochs} completed."
         else:
             self.pause_animation()
             self.message_div.text = "Training complete."
