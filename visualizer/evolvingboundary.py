@@ -7,7 +7,7 @@ from skimage import measure
 from bokeh.io import curdoc
 
 class EvolvingBoundaryVisualizer:
-    def __init__(self, shared_source, shared_resource, mod1, epoch_steps, max_epochs=30):
+    def __init__(self, shared_source, shared_resource, mod1, epoch_steps, colors, max_epochs=30):
         self.source = shared_source
         self.shared_resource = shared_resource
         self.mod1 = mod1
@@ -18,6 +18,8 @@ class EvolvingBoundaryVisualizer:
 
         self.classes = np.unique(self.y) 
         self.message_div = Div(text="", width=400, height=50, styles={"color": "black"})
+        
+        self.colors = colors
 
         x_min, x_max = self.X[:, 0].min() - 1, self.X[:, 0].max() + 1
         y_min, y_max = self.X[:, 1].min() - 1, self.X[:, 1].max() + 1
@@ -31,7 +33,7 @@ class EvolvingBoundaryVisualizer:
             active_drag="box_select"
         )
 
-        self.boundary_source = ColumnDataSource(data=dict(xs=[], ys=[], prev_xs=[], prev_ys=[]))
+        self.boundary_source = ColumnDataSource(data={"xs": [], "ys": [], "prev_xs": [], "prev_ys": []})
 
         self.plot.scatter("x", "y", size=8, source=self.source, color="color", marker="marker")
         self.plot.multi_line(xs="xs", ys="ys", source=self.boundary_source, line_width=2, color="black")
@@ -62,6 +64,37 @@ class EvolvingBoundaryVisualizer:
 
         # Store callback id for tracking
         self.animation_callback_id = None
+        self.ind = []
+
+        # Setup selection callback
+        self.source.selected.on_change('indices', self.update_selection)
+
+        self.clear_button = Button(label="Clear Selection", button_type="danger")
+        self.clear_button.on_click(self.reset_selection)
+
+    def update_selection(self, attr, old, new):
+        selected_indices = self.source.selected.indices
+        new_data = self.source.data.copy()
+
+        for idx in range(len(new_data['color'])):
+            if idx in selected_indices:
+                if new_data["color"][idx] != "red":
+                    new_data["color"][idx] = "red"
+                else:
+                    new_data["color"][idx] = self.colors[int(new_data["class"][idx])]
+        
+        self.source.data = new_data
+        self.ind.extend(selected_indices)
+
+    def reset_selection(self):
+        new_data = self.source.data.copy()
+
+        for idx in range(len(new_data["color"])):
+            new_data["color"][idx] = self.colors[int(new_data["class"][idx])]
+
+        self.source.data = new_data
+        self.source.selected.indices = []  # Clear selection
+        self.message_div.text = "Selections cleared."
 
     def calculate_boundaries(self):
         unique_classes = np.unique(self.y)
@@ -146,7 +179,8 @@ class EvolvingBoundaryVisualizer:
         return column(
             self.plot,
             self.message_div,
-            row(self.play_button, self.pause_button, self.reset_button)
+            row(self.play_button, self.pause_button, self.reset_button),
+            row(self.clear_button),
         )
 
     def animate(self):

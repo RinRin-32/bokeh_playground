@@ -5,7 +5,6 @@ from bokeh.models import ColumnDataSource
 class EvolvingMemoryMapVisualizer:
     def __init__(self, shared_source):
         self.shared_source = shared_source
-        self.source = ColumnDataSource(data={"bls": [], "bpe": [], "color": [], "marker": []})
         self.plot = self.create_plot()
 
     def create_plot(self):

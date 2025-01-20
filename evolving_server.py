@@ -81,7 +81,7 @@ shared_resource = ColumnDataSource(data={
 
 sensitivityvisualizer = EvolvingSensitivityVisualizer(shared_source)
 memorymapvisualzier = EvolvingMemoryMapVisualizer(shared_source)
-boundaryvisualizer = EvolvingBoundaryVisualizer(shared_source, shared_resource, sensitivityvisualizer, 1)
+boundaryvisualizer = EvolvingBoundaryVisualizer(shared_source, shared_resource, sensitivityvisualizer, 1, colors)
 
 boundary_layout = column(boundaryvisualizer.get_layout(), width=600)
 memory_layout = column(memorymapvisualzier.get_layout(), width=600)

@@ -1,6 +1,5 @@
 from bokeh.plotting import figure
 from bokeh.layouts import column
-from bokeh.models import ColumnDataSource
 import numpy as np
 
 class EvolvingSensitivityVisualizer:
