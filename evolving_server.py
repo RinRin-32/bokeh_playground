@@ -13,27 +13,20 @@ from bokeh.layouts import column, row
 import numpy as np
 
 dir = 'data/'
-file = open(dir + 'evolving_visualizer_evolving_memory_maps_scores.pkl', 'rb')
+#file = open(dir + 'evolving_visualizer_evolving_memory_maps_scores.pkl', 'rb')
+file = open(dir + 'visualize_evolving_evolving_memory_maps_scores.pkl', 'rb')
 all_scores = pickle.load(file)
 file.close()
 
 
-file = open(dir + 'evolving_visualizer_evolving_memory_maps_retrain.pkl', 'rb')
+#file = open(dir + 'evolving_visualizer_evolving_memory_maps_retrain.pkl', 'rb')
+file = open(dir + 'visualize_evolving_evolving_memory_maps_retrain.pkl', 'rb')
 retrain = pickle.load(file)
 file.close()
 
 X = all_scores[0]['X_train'].numpy()
 y = all_scores[0]['y_train'].numpy()
 ids = list(range(len(X)))
-
-shared_source = ColumnDataSource(data={
-    "id": ids,
-    "x": X[:, 0],
-    "y": X[:, 1],
-    "class": y,
-    "color": ["blue" if cls == 0 else "green" for cls in y],
-    "marker": ["circle" if cls == 0 else "square" for cls in y],
-})
 
 # Set up classes, colors, and markers
 classes = [0, 1]
@@ -55,20 +48,34 @@ Z = [scores['decision_boundary']['Z'] for epoch, scores in all_scores.items()]
 X_train = [scores['X_train'] for epoch, scores in all_scores.items()]
 y_train = [scores['y_train'] for epoch, scores in all_scores.items()]
 
+
+shared_source = ColumnDataSource(data={
+    "id": ids,
+    "x": X[:, 0],
+    "y": X[:, 1],
+    "class": y,
+    "color": ["blue" if cls == 0 else "green" for cls in y],
+    "marker": ["circle" if cls == 0 else "square" for cls in y],
+    "xx": xx[0],
+    "yy": yy[0],
+    "Z": Z[0],
+    "bpe": bpe_scores[0],
+    "bls": bls_scores[0],
+    "sensitivities": sensitivity_scores[0],
+    "softmax_deviations": softmax_deviation[0],
+})
+
 shared_resource = ColumnDataSource(data={
     "epoch": epochs,
-    "features": X_train,
-    "classes": y_train,
     "xx": xx,
-    "yy": y,
+    "yy": yy,
     "Z": Z,
     "bpe": bpe_scores,
     "bls": bls_scores,
     "sensitivities": sensitivity_scores,
-    "indices": indices,
     "softmax_deviations": softmax_deviation,
-    "color": shared_source.data["color"],
-    "marker": shared_source.data["marker"],
+    "color": shared_source.data["color"], # will need to remove this later
+    "marker": shared_source.data["marker"], # will need to remove this later
 })
 
 ## NEED TO MAKE COLOR AND MARKER SHARED DATA SOURCE HERE!!!!
@@ -79,7 +86,7 @@ shared_resource = ColumnDataSource(data={
 
 sensitivityvisualizer = EvolvingSensitivityVisualizer(shared_resource)
 memorymapvisualzier = EvolvingMemoryMapVisualizer(shared_resource)
-boundaryvisualizer = EvolvingBoundaryVisualizer(shared_source, sensitivityvisualizer, memorymapvisualzier, 1)
+boundaryvisualizer = EvolvingBoundaryVisualizer(shared_source, shared_resource, sensitivityvisualizer, memorymapvisualzier, 1)
 
 boundary_layout = column(boundaryvisualizer.get_layout(), width=600)
 memory_layout = column(memorymapvisualzier.get_layout(), width=600)
