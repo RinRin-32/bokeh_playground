@@ -70,7 +70,6 @@ class EvolvingBoundaryVisualizer:
             return None, None, None
         else:
             self.message_div.text = ""
-            self.epoch += 1
 
             shared_data = self.shared_resource.data
             if self.epoch in shared_data["epoch"]:
@@ -93,6 +92,7 @@ class EvolvingBoundaryVisualizer:
                     new_data["softmax_deviations"] = softmax_deviations
                     self.source.data = new_data
                     self.mod1.update()
+            self.epoch += 1
 
             return xx, yy, zz
 
