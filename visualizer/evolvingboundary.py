@@ -2,27 +2,14 @@ from bokeh.plotting import figure
 from bokeh.layouts import column, row
 from bokeh.models import Div, Button, ColumnDataSource
 import numpy as np
-from torch import nn
-import torch
-from torch.utils.data import TensorDataset
 from skimage import measure
-import sys
 
 from bokeh.io import curdoc
 
-sys.path.append("../memory-perturbation")
-
-from lib.utils import train_model
-
-from lib.utils import get_quick_loader
-
-from torch.utils.data import DataLoader
-from lib.models import get_model
-from ivon import IVON as IBLR
-
 class EvolvingBoundaryVisualizer:
-    def __init__(self, shared_source, mod1, mod2, epoch_steps, max_epochs=30):
+    def __init__(self, shared_source, shared_resource, mod1, mod2, epoch_steps, max_epochs=30):
         self.source = shared_source
+        self.shared_resource = shared_resource
         self.mod1 = mod1
         self.mod2 = mod2
         self.epoch_steps = epoch_steps
@@ -48,15 +35,6 @@ class EvolvingBoundaryVisualizer:
         self.plot.scatter("x", "y", size=8, source=self.source, color="color", marker="marker")
         self.plot.multi_line(xs="xs", ys="ys", source=self.boundary_source, line_width=2, color="black")
         self.plot.multi_line(xs="prev_xs", ys="prev_ys", source=self.boundary_source, line_width=2, color="grey")
-
-        self.model = get_model('small_mlp', 2, 2, 'cuda', 1)
-        self.optim = IBLR(self.model.parameters(), lr=2, mc_samples=4, ess=800, weight_decay=1e-3,
-                          beta1=0.9, beta2=0.99999, hess_init=0.9)
-        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optim, T_max=30)
-        self.criterion = nn.CrossEntropyLoss().to('cuda')
-
-        self.ds_train = TensorDataset(torch.tensor(self.X, dtype=torch.float32), torch.tensor(self.y, dtype=torch.long))
-        self.trainloader = get_quick_loader(DataLoader(self.ds_train, batch_size=256, shuffle=False), device='cuda')
 
         self.epoch = 0
         self.max_epochs = max_epochs
@@ -86,7 +64,6 @@ class EvolvingBoundaryVisualizer:
         self.animation_callback_id = None
 
     def calculate_boundaries(self):
-        print("Calculating boundaries...")
         unique_classes = np.unique(self.y)
         if len(unique_classes) < 2:
             self.message_div.text = "Error: At least two classes are required to fit the model."
@@ -94,24 +71,13 @@ class EvolvingBoundaryVisualizer:
         else:
             self.message_div.text = ""
             self.epoch += 1
-            self.model, self.optim = train_model(self.model, self.criterion, self.optim, self.scheduler, self.trainloader, 1, 799, None, 'cuda', return_optim=True)
-            self.model.eval()
 
-            x_min, x_max = self.X[:, 0].min() - 1, self.X[:, 0].max() + 1
-            y_min, y_max = self.X[:, 1].min() - 1, self.X[:, 1].max() + 1
-            xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.01),
-                                 np.arange(y_min, y_max, 0.01))
-
-            grid = np.c_[xx.ravel(), yy.ravel()]
-            grid = torch.tensor(grid, dtype=torch.float32).to('cuda')
-
-            with torch.no_grad():
-                logits = self.model(grid)
-
-            probabilities = torch.softmax(logits, dim=1)
-            zz = torch.argmax(probabilities, dim=1)
-            zz = zz.cpu().numpy().reshape(xx.shape)
-
+            shared_data = self.shared_resource.data
+            if self.epoch in shared_data["epoch"]:
+                epoch_index = shared_data["epoch"].index(self.epoch)
+                xx = shared_data["xx"][epoch_index]
+                yy = shared_data["yy"][epoch_index]
+                zz = shared_data["Z"][epoch_index]
             if self.epoch % self.epoch_steps == 0:
                 self.mod1.update(self.epoch//self.epoch_steps)
                 self.mod2.update(self.epoch//self.epoch_steps)
@@ -157,11 +123,6 @@ class EvolvingBoundaryVisualizer:
     def reset(self, event):
         self.pause_animation()
         self.epoch = 0
-        self.model = get_model('small_mlp', 2, 2, 'cuda', 1)
-        self.optim = IBLR(self.model.parameters(), lr=2, mc_samples=4, ess=800, weight_decay=1e-3,
-                          beta1=0.9, beta2=0.99999, hess_init=0.9)
-        self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optim, T_max=30)
-        self.criterion = nn.CrossEntropyLoss().to('cuda')
         self.boundary_source.data = {"xs": [], "ys": [], "prev_xs": [], "prev_ys": []}
 
         xx, yy, zz = self.calculate_boundaries()
