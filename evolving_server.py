@@ -56,9 +56,6 @@ shared_source = ColumnDataSource(data={
     "class": y,
     "color": ["blue" if cls == 0 else "green" for cls in y],
     "marker": ["circle" if cls == 0 else "square" for cls in y],
-    "xx": xx[0],
-    "yy": yy[0],
-    "Z": Z[0],
     "bpe": bpe_scores[0],
     "bls": bls_scores[0],
     "sensitivities": sensitivity_scores[0],
@@ -74,8 +71,6 @@ shared_resource = ColumnDataSource(data={
     "bls": bls_scores,
     "sensitivities": sensitivity_scores,
     "softmax_deviations": softmax_deviation,
-    "color": shared_source.data["color"], # will need to remove this later
-    "marker": shared_source.data["marker"], # will need to remove this later
 })
 
 ## NEED TO MAKE COLOR AND MARKER SHARED DATA SOURCE HERE!!!!
@@ -84,9 +79,9 @@ shared_resource = ColumnDataSource(data={
 # Can the selected datapoint be tracked over epoch, that'd make a really good plot!
 
 
-sensitivityvisualizer = EvolvingSensitivityVisualizer(shared_resource)
-memorymapvisualzier = EvolvingMemoryMapVisualizer(shared_resource)
-boundaryvisualizer = EvolvingBoundaryVisualizer(shared_source, shared_resource, sensitivityvisualizer, memorymapvisualzier, 1)
+sensitivityvisualizer = EvolvingSensitivityVisualizer(shared_source)
+memorymapvisualzier = EvolvingMemoryMapVisualizer(shared_source)
+boundaryvisualizer = EvolvingBoundaryVisualizer(shared_source, shared_resource, sensitivityvisualizer, 1)
 
 boundary_layout = column(boundaryvisualizer.get_layout(), width=600)
 memory_layout = column(memorymapvisualzier.get_layout(), width=600)

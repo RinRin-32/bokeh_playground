@@ -7,11 +7,10 @@ from skimage import measure
 from bokeh.io import curdoc
 
 class EvolvingBoundaryVisualizer:
-    def __init__(self, shared_source, shared_resource, mod1, mod2, epoch_steps, max_epochs=30):
+    def __init__(self, shared_source, shared_resource, mod1, epoch_steps, max_epochs=30):
         self.source = shared_source
         self.shared_resource = shared_resource
         self.mod1 = mod1
-        self.mod2 = mod2
         self.epoch_steps = epoch_steps
 
         self.X = np.column_stack([self.source.data[feature] for feature in self.source.data if feature in ['x', 'y']])
@@ -27,7 +26,9 @@ class EvolvingBoundaryVisualizer:
             title="Evolving Boundary Visualization", 
             width=600, height=600, 
             x_range=(x_min, x_max), 
-            y_range=(y_min, y_max)
+            y_range=(y_min, y_max),
+            tools="tap,box_select,box_zoom,reset,pan",
+            active_drag="box_select"
         )
 
         self.boundary_source = ColumnDataSource(data=dict(xs=[], ys=[], prev_xs=[], prev_ys=[]))
@@ -41,8 +42,7 @@ class EvolvingBoundaryVisualizer:
         self.running = False
 
         xx, yy, zz = self.calculate_boundaries()
-        self.mod1.update(0)
-        self.mod2.update(0)
+        self.mod1.update()
         self.update_boundary(xx, yy, zz)
 
         # Buttons for control
@@ -79,8 +79,20 @@ class EvolvingBoundaryVisualizer:
                 yy = shared_data["yy"][epoch_index]
                 zz = shared_data["Z"][epoch_index]
             if self.epoch % self.epoch_steps == 0:
-                self.mod1.update(self.epoch//self.epoch_steps)
-                self.mod2.update(self.epoch//self.epoch_steps)
+                new_data = self.source.data.copy()
+                shared_data = self.shared_resource.data
+                if self.epoch in shared_data["epoch"]:
+                    epoch_index = shared_data["epoch"].index(self.epoch)
+                    bls = shared_data["bls"][epoch_index]
+                    bpe = shared_data["bpe"][epoch_index]
+                    sensitivity = shared_data["sensitivities"][epoch_index]
+                    softmax_deviations = shared_data["softmax_deviations"][epoch_index]
+                    new_data["bls"] = bls
+                    new_data["bpe"] = bpe
+                    new_data["sensitivities"] = sensitivity
+                    new_data["softmax_deviations"] = softmax_deviations
+                    self.source.data = new_data
+                    self.mod1.update()
 
             return xx, yy, zz
 
@@ -126,8 +138,7 @@ class EvolvingBoundaryVisualizer:
         self.boundary_source.data = {"xs": [], "ys": [], "prev_xs": [], "prev_ys": []}
 
         xx, yy, zz = self.calculate_boundaries()
-        self.mod1.update(0)
-        self.mod2.update(0)
+        self.mod1.update()
         self.update_boundary(xx, yy, zz)
         self.message_div.text = "Reset complete. Ready to start."
 
