@@ -1,6 +1,6 @@
 from bokeh.plotting import figure
 from bokeh.layouts import column, row
-from bokeh.models import Div, Slider, ColumnDataSource, Button, Spacer
+from bokeh.models import Div, Slider, ColumnDataSource, Button, Spacer, InlineStyleSheet, Div
 from bokeh.models.widgets import RadioButtonGroup
 import numpy as np
 from skimage import measure
@@ -58,14 +58,13 @@ class EvolvingBoundaryVisualizer:
         self.tracker_colors = [plt.cm.tab10(i) for i in range(10)]  # Store as RGBA
         self.tracker_colors_hex = [matplotlib.colors.rgb2hex(c) for c in self.tracker_colors]  # Store as hex
 
-        self.tracker_buttons = RadioButtonGroup(labels=[''] * len(self.tracker_colors), active=None)
-
-        # Update button display colors
-        for i in range(len(self.tracker_colors)):
-            self.tracker_buttons.labels[i] = f"<div style='background-color: {self.tracker_colors_hex[i]}; width: 20px; height: 20px;'></div>"
-
-        # Binding the color change to button selection
-        self.tracker_buttons.on_change("active", self.apply_tracker_color)
+        # Creating individual buttons for color selection
+        self.tracker_buttons = []
+        for i, color in enumerate(self.tracker_colors_hex):
+            button = Button(label=f"Color {i + 1}", width=100, button_type="primary")
+            button.css_classes = [f"color-button-{i}"]
+            button.on_click(lambda color=color: self.apply_tracker_color(color))
+            self.tracker_buttons.append(button)
 
         # Play/Pause button
         self.play_pause_button = Button(label="Play", width=100)
@@ -104,23 +103,18 @@ class EvolvingBoundaryVisualizer:
         self.source.selected.indices = []  # Clear selection
         self.message_div.text = "Selections cleared."
 
-    def apply_tracker_color(self, attr, old, new):
-        if new is not None:
-            selected_indices = self.source.selected.indices
-            if not selected_indices:
-                self.message_div.text = "No points selected to apply color."
-                self.tracker_buttons.active = None
-                return
+    def apply_tracker_color(self, color):
+        selected_indices = self.source.selected.indices
+        if not selected_indices:
+            self.message_div.text = "No points selected to apply color."
+            return
 
-            new_color = self.tracker_colors_hex[new]
-            new_data = self.source.data.copy()
+        new_data = self.source.data.copy()
+        for idx in selected_indices:
+            new_data["color"][idx] = color
 
-            for idx in selected_indices:
-                new_data["color"][idx] = new_color
-
-            self.source.data = new_data
-            self.message_div.text = f"Applied color '{new_color}' to selected points."
-            self.tracker_buttons.active = None
+        self.source.data = new_data
+        self.message_div.text = f"Applied color '{color}' to selected points."
 
     def calculate_boundaries(self):
         unique_classes = np.unique(self.y)
@@ -197,6 +191,6 @@ class EvolvingBoundaryVisualizer:
             self.message_div,
             self.play_pause_button,
             row(Spacer(width=50),self.epoch_slider, Spacer(width=50)),
-            row(Div(text="Tracker Colors:"), self.tracker_buttons),
+            row(Div(text="Tracker Colors:"), *self.tracker_buttons),
             row(self.clear_button)
         )
