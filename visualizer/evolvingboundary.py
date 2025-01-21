@@ -99,6 +99,7 @@ class EvolvingBoundaryVisualizer:
             selected_indices = self.source.selected.indices
             if not selected_indices:
                 self.message_div.text = "No points selected to apply color."
+                self.tracker_buttons.active = None
                 return
 
             new_color = self.tracker_colors[new]
@@ -109,6 +110,7 @@ class EvolvingBoundaryVisualizer:
 
             self.source.data = new_data
             self.message_div.text = f"Applied color '{new_color}' to selected points."
+            self.tracker_buttons.active = None
 
     def calculate_boundaries(self):
         unique_classes = np.unique(self.y)
