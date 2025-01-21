@@ -5,6 +5,8 @@ from bokeh.models.widgets import RadioButtonGroup
 import numpy as np
 from skimage import measure
 from bokeh.io import curdoc
+import matplotlib.pyplot as plt
+import matplotlib
 
 class EvolvingBoundaryVisualizer:
     def __init__(self, shared_source, shared_resource, mod1, epoch_steps, colors, max_epochs=30):
@@ -52,9 +54,17 @@ class EvolvingBoundaryVisualizer:
         self.clear_button = Button(label="Clear Selection", button_type="danger")
         self.clear_button.on_click(self.reset_selection)
 
-        # Add tracker colors
-        self.tracker_colors = ["red", "orange", "purple", "yellow", "pink"]
-        self.tracker_buttons = RadioButtonGroup(labels=self.tracker_colors, active=None)
+        # Colors for tracker buttons (using matplotlib tab10 colors)
+        self.tracker_colors = [plt.cm.tab10(i) for i in range(10)]  # Store as RGBA
+        self.tracker_colors_hex = [matplotlib.colors.rgb2hex(c) for c in self.tracker_colors]  # Store as hex
+
+        self.tracker_buttons = RadioButtonGroup(labels=[''] * len(self.tracker_colors), active=None)
+
+        # Update button display colors
+        for i in range(len(self.tracker_colors)):
+            self.tracker_buttons.labels[i] = f"<div style='background-color: {self.tracker_colors_hex[i]}; width: 20px; height: 20px;'></div>"
+
+        # Binding the color change to button selection
         self.tracker_buttons.on_change("active", self.apply_tracker_color)
 
         # Play/Pause button
@@ -102,7 +112,7 @@ class EvolvingBoundaryVisualizer:
                 self.tracker_buttons.active = None
                 return
 
-            new_color = self.tracker_colors[new]
+            new_color = self.tracker_colors_hex[new]
             new_data = self.source.data.copy()
 
             for idx in selected_indices:
