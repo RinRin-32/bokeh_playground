@@ -1,9 +1,9 @@
 from bokeh.plotting import figure
 from bokeh.layouts import column, row
-from bokeh.models import Div, Button, ColumnDataSource
+from bokeh.models import Div, Slider, ColumnDataSource, Button, Spacer
+from bokeh.models.widgets import RadioButtonGroup
 import numpy as np
 from skimage import measure
-
 from bokeh.io import curdoc
 
 class EvolvingBoundaryVisualizer:
@@ -16,18 +16,17 @@ class EvolvingBoundaryVisualizer:
         self.X = np.column_stack([self.source.data[feature] for feature in self.source.data if feature in ['x', 'y']])
         self.y = self.source.data['class']
 
-        self.classes = np.unique(self.y) 
+        self.classes = np.unique(self.y)
         self.message_div = Div(text="", width=400, height=50, styles={"color": "black"})
-        
-        self.colors = colors
 
+        self.colors = colors
         x_min, x_max = self.X[:, 0].min() - 1, self.X[:, 0].max() + 1
         y_min, y_max = self.X[:, 1].min() - 1, self.X[:, 1].max() + 1
 
         self.plot = figure(
-            title="Evolving Boundary Visualization", 
-            width=600, height=600, 
-            x_range=(x_min, x_max), 
+            title="Evolving Boundary Visualization",
+            width=600, height=600,
+            x_range=(x_min, x_max),
             y_range=(y_min, y_max),
             tools="tap,box_select,box_zoom,reset,pan",
             active_drag="box_select"
@@ -41,60 +40,75 @@ class EvolvingBoundaryVisualizer:
 
         self.epoch = 0
         self.max_epochs = max_epochs
-        self.running = False
 
         xx, yy, zz = self.calculate_boundaries()
         self.mod1.update()
         self.update_boundary(xx, yy, zz)
 
-        # Buttons for control
-        self.play_button = Button(label="Play", width=100)
-        self.pause_button = Button(label="Pause", width=100)
-        self.reset_button = Button(label="Reset", width=100)
-
-        self.play_button.on_click(self.start_animation)
-        self.pause_button.on_click(self.pause_animation)
-        self.reset_button.on_click(self.reset)
-
-        self.layout = column(
-            self.plot,
-            self.message_div,
-            row(self.play_button, self.pause_button, self.reset_button)
-        )
-
-        # Store callback id for tracking
-        self.animation_callback_id = None
-        self.ind = []
-
-        # Setup selection callback
-        self.source.selected.on_change('indices', self.update_selection)
+        # Slider for epoch control
+        self.epoch_slider = Slider(start=0, end=self.max_epochs, value=0, step=1, title="Epoch")
+        self.epoch_slider.on_change('value', self.slider_update)
 
         self.clear_button = Button(label="Clear Selection", button_type="danger")
         self.clear_button.on_click(self.reset_selection)
 
-    def update_selection(self, attr, old, new):
-        selected_indices = self.source.selected.indices
-        new_data = self.source.data.copy()
+        # Add tracker colors
+        self.tracker_colors = ["red", "orange", "purple", "yellow", "pink"]
+        self.tracker_buttons = RadioButtonGroup(labels=self.tracker_colors, active=None)
+        self.tracker_buttons.on_change("active", self.apply_tracker_color)
 
-        for idx in range(len(new_data['color'])):
-            if idx in selected_indices:
-                if new_data["color"][idx] != "red":
-                    new_data["color"][idx] = "red"
-                else:
-                    new_data["color"][idx] = self.colors[int(new_data["class"][idx])]
-        
-        self.source.data = new_data
-        self.ind.extend(selected_indices)
+        # Play/Pause button
+        self.play_pause_button = Button(label="Play", width=100)
+        self.play_pause_button.on_click(self.toggle_play_pause)
+        self.running = False  # Tracks whether animation is running
+
+    def toggle_play_pause(self):
+        if self.running:
+            self.pause_animation()
+        else:
+            self.start_animation()
+
+    def start_animation(self):
+        self.running = True
+        self.play_pause_button.label = "Pause"
+        self.animate()
+
+    def pause_animation(self):
+        self.running = False
+        self.play_pause_button.label = "Play"
+
+    def animate(self):
+        if self.running and self.epoch < self.max_epochs:
+            self.epoch += 1
+            self.epoch_slider.value = self.epoch  # Triggers `slider_update`
+            curdoc().add_timeout_callback(self.animate, 100)  # 100ms interval
+        elif self.epoch >= self.max_epochs:
+            self.pause_animation()
 
     def reset_selection(self):
         new_data = self.source.data.copy()
-
         for idx in range(len(new_data["color"])):
             new_data["color"][idx] = self.colors[int(new_data["class"][idx])]
 
         self.source.data = new_data
         self.source.selected.indices = []  # Clear selection
         self.message_div.text = "Selections cleared."
+
+    def apply_tracker_color(self, attr, old, new):
+        if new is not None:
+            selected_indices = self.source.selected.indices
+            if not selected_indices:
+                self.message_div.text = "No points selected to apply color."
+                return
+
+            new_color = self.tracker_colors[new]
+            new_data = self.source.data.copy()
+
+            for idx in selected_indices:
+                new_data["color"][idx] = new_color
+
+            self.source.data = new_data
+            self.message_div.text = f"Applied color '{new_color}' to selected points."
 
     def calculate_boundaries(self):
         unique_classes = np.unique(self.y)
@@ -125,8 +139,6 @@ class EvolvingBoundaryVisualizer:
                     new_data["softmax_deviations"] = softmax_deviations
                     self.source.data = new_data
                     self.mod1.update()
-            self.epoch += 1
-
             return xx, yy, zz
 
     def extract_boundary_lines(self, xx, yy, zz):
@@ -143,10 +155,10 @@ class EvolvingBoundaryVisualizer:
 
             # Update the ColumnDataSource with both the current and previous boundaries
             current_data = self.boundary_source.data
-            if self.epoch>1:
+            if self.epoch > 1:
                 prev_xs = current_data["xs"]
                 prev_ys = current_data["ys"]
-            
+
                 self.boundary_source.data = {
                     "xs": xs,
                     "ys": ys,
@@ -161,44 +173,18 @@ class EvolvingBoundaryVisualizer:
         else:
             self.boundary_source.data = {"xs": [], "ys": [], "prev_xs": [], "prev_ys": []}
 
-    def update(self, attr, old, new):
+    def slider_update(self, attr, old, new):
+        self.epoch = new
         xx, yy, zz = self.calculate_boundaries()
         self.update_boundary(xx, yy, zz)
-
-    def reset(self, event):
-        self.pause_animation()
-        self.epoch = 0
-        self.boundary_source.data = {"xs": [], "ys": [], "prev_xs": [], "prev_ys": []}
-
-        xx, yy, zz = self.calculate_boundaries()
-        self.mod1.update()
-        self.update_boundary(xx, yy, zz)
-        self.message_div.text = "Reset complete. Ready to start."
+        self.message_div.text = f"Epoch {self.epoch}/{self.max_epochs} selected."
 
     def get_layout(self):
         return column(
             self.plot,
             self.message_div,
-            row(self.play_button, self.pause_button, self.reset_button),
-            row(self.clear_button),
+            self.play_pause_button,
+            row(Spacer(width=50),self.epoch_slider, Spacer(width=50)),
+            row(Div(text="Tracker Colors:"), self.tracker_buttons),
+            row(self.clear_button)
         )
-
-    def animate(self):
-        if self.epoch <= self.max_epochs:
-            xx, yy, zz = self.calculate_boundaries()
-            self.update_boundary(xx, yy, zz)
-            self.message_div.text = f"Epoch {self.epoch-1}/{self.max_epochs} completed."
-        else:
-            self.pause_animation()
-            self.message_div.text = "Training complete."
-
-    def start_animation(self):
-        if not self.running:
-            self.running = True
-            self.animation_callback_id = curdoc().add_periodic_callback(self.animate, 500)
-
-    def pause_animation(self):
-        if self.animation_callback_id is not None:
-            curdoc().remove_periodic_callback(self.animation_callback_id)
-            self.animation_callback_id = None
-        self.running = False
