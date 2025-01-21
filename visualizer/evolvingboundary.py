@@ -60,9 +60,22 @@ class EvolvingBoundaryVisualizer:
 
         # Creating individual buttons for color selection
         self.tracker_buttons = []
+        tracker_buttons = []
         for i, color in enumerate(self.tracker_colors_hex):
-            button = Button(label=f"Color {i + 1}", width=100, button_type="primary")
-            button.css_classes = [f"color-button-{i}"]
+            # Dynamically create the style for each button
+            style = InlineStyleSheet(css=f"""
+            :host(.color-button-{i}) {{
+                background-color: {color};
+                font-weight: bold;
+                color: white;
+                border-style: solid;
+                border-width: 2px;
+                border-color: {color};
+            }}
+            """)
+
+            # Create button and assign a unique class
+            button = Button(label=f"Group {i + 1}", width=100, stylesheets=[style], css_classes=[f'color-button-{i}'])
             button.on_click(lambda color=color: self.apply_tracker_color(color))
             self.tracker_buttons.append(button)
 
