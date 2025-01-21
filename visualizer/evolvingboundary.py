@@ -55,7 +55,7 @@ class EvolvingBoundaryVisualizer:
         self.clear_button.on_click(self.reset_selection)
 
         # Colors for tracker buttons (using matplotlib tab10 colors)
-        self.tracker_colors = [plt.cm.tab10(i) for i in range(10)]  # Store as RGBA
+        self.tracker_colors = [plt.cm.tab10(i) for i in range(8)]  # Store as RGBA
         self.tracker_colors_hex = [matplotlib.colors.rgb2hex(c) for c in self.tracker_colors]  # Store as hex
 
         # Creating individual buttons for color selection
