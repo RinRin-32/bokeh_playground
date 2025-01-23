@@ -26,7 +26,7 @@ class EvolvingBoundaryVisualizer:
         y_min, y_max = self.X[:, 1].min() - 1, self.X[:, 1].max() + 1
 
         self.plot = figure(
-            title="Evolving Boundary Visualization",
+            title="Evolving Boundary Visualization over 30 Epoch",
             width=600, height=600,
             x_range=(x_min, x_max),
             y_range=(y_min, y_max),
@@ -48,7 +48,7 @@ class EvolvingBoundaryVisualizer:
         self.update_boundary(xx, yy, zz)
 
         # Slider for epoch control
-        self.epoch_slider = Slider(start=0, end=self.max_epochs, value=0, step=1, title="Epoch")
+        self.epoch_slider = Slider(start=0, end=self.max_epochs, value=0, step=1, title="Step")
         self.epoch_slider.on_change('value', self.slider_update)
 
         self.clear_button = Button(label="Clear Selection", button_type="danger")
@@ -196,7 +196,7 @@ class EvolvingBoundaryVisualizer:
         self.epoch = new
         xx, yy, zz = self.calculate_boundaries()
         self.update_boundary(xx, yy, zz)
-        self.message_div.text = f"Epoch {self.epoch}/{self.max_epochs} selected."
+        #self.message_div.text = f"Epoch {self.epoch}/{self.max_epochs} selected."
 
     def get_layout(self):
         return column(
