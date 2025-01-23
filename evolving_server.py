@@ -13,14 +13,16 @@ from bokeh.layouts import column, row
 import numpy as np
 
 dir = 'data/'
-#file = open(dir + 'evolving_visualizer_evolving_memory_maps_scores.pkl', 'rb')
-file = open(dir + 'visualize_evolving_evolving_memory_maps_scores.pkl', 'rb')
+#file = open(dir + 'fix_evolving_memory_maps_scores.pkl', 'rb')
+file = open(dir + 'debug_evolving_memory_maps_scores.pkl', 'rb')
+#file = open(dir + 'debug_scores.pkl', 'rb')
 all_scores = pickle.load(file)
 file.close()
 
 
-#file = open(dir + 'evolving_visualizer_evolving_memory_maps_retrain.pkl', 'rb')
-file = open(dir + 'visualize_evolving_evolving_memory_maps_retrain.pkl', 'rb')
+#file = open(dir + 'fix_evolving_memory_maps_retrain.pkl', 'rb')
+file = open(dir + 'debug_evolving_memory_maps_retrain.pkl', 'rb')
+#file = open(dir + 'debug_retrain.pkl', 'rb')
 retrain = pickle.load(file)
 file.close()
 
@@ -40,6 +42,7 @@ epochs = list(range(len(all_scores)))
 sensitivity_scores = [epoch_data["sensitivities"] for epoch, epoch_data in all_scores.items()]
 indices = [epoch_data["indices_retrain"] for epoch, epoch_data in retrain.items()]
 softmax_deviation = [epoch_data["softmax_deviations"] for epoch, epoch_data in retrain.items()]
+print(len(softmax_deviation))
 
 xx = [scores['decision_boundary']['xx'] for epoch, scores in all_scores.items()]
 yy = [scores['decision_boundary']['yy'] for epoch, scores in all_scores.items()]
@@ -81,11 +84,11 @@ shared_resource = ColumnDataSource(data={
 
 sensitivityvisualizer = EvolvingSensitivityVisualizer(shared_source)
 memorymapvisualzier = EvolvingMemoryMapVisualizer(shared_source)
-boundaryvisualizer = EvolvingBoundaryVisualizer(shared_source, shared_resource, sensitivityvisualizer, 1, colors)
+boundaryvisualizer = EvolvingBoundaryVisualizer(shared_source, shared_resource, sensitivityvisualizer, 1, colors, max_epochs=123)
 
 boundary_layout = column(boundaryvisualizer.get_layout(), width=600)
 memory_layout = column(memorymapvisualzier.get_layout(), width=600)
-sensitivity_layout = column(sensitivityvisualizer.get_layout(), width=600)
+sensitivity_layout = column(sensitivityvisualizer.get_layout(), width=400)
 
 layout = row(boundary_layout, memory_layout, sensitivity_layout)
 
