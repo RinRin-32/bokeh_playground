@@ -9,11 +9,11 @@ import matplotlib.pyplot as plt
 import matplotlib
 
 class EvolvingBoundaryVisualizer:
-    def __init__(self, shared_source, shared_resource, mod1, epoch_steps, colors, max_epochs=30):
+    def __init__(self, shared_source, shared_resource, mod1, steps, colors, max_steps=30):
         self.source = shared_source
         self.shared_resource = shared_resource
         self.mod1 = mod1
-        self.epoch_steps = epoch_steps
+        self.steps = steps
 
         self.X = np.column_stack([self.source.data[feature] for feature in self.source.data if feature in ['x', 'y']])
         self.y = self.source.data['class']
@@ -40,22 +40,22 @@ class EvolvingBoundaryVisualizer:
         self.plot.multi_line(xs="xs", ys="ys", source=self.boundary_source, line_width=2, color="black")
         self.plot.multi_line(xs="prev_xs", ys="prev_ys", source=self.boundary_source, line_width=2, color="grey")
 
-        self.epoch = 0
-        self.max_epochs = max_epochs
+        self.step = 0
+        self.max_steps = max_steps
 
         xx, yy, zz = self.calculate_boundaries()
         self.mod1.update()
         self.update_boundary(xx, yy, zz)
 
-        # Slider for epoch control
-        self.epoch_slider = Slider(start=0, end=self.max_epochs, value=0, step=1, title="Step")
-        self.epoch_slider.on_change('value', self.slider_update)
+        # Slider for step control
+        self.step_slider = Slider(start=0, end=self.max_steps, value=0, step=1, title=f"Epoch: {self.step // 4} Step")
+        self.step_slider.on_change('value', self.slider_update)
 
         self.clear_button = Button(label="Clear Selection", button_type="danger")
         self.clear_button.on_click(self.reset_selection)
 
         # Colors for tracker buttons (using matplotlib tab10 colors)
-        self.tracker_colors = [plt.cm.tab10(i) for i in range(8)]  # Store as RGBA
+        self.tracker_colors = [plt.cm.tab10(i+3) for i in range(6)]  # Store as RGBA
         self.tracker_colors_hex = [matplotlib.colors.rgb2hex(c) for c in self.tracker_colors]  # Store as hex
 
         # Creating individual buttons for color selection
@@ -65,12 +65,16 @@ class EvolvingBoundaryVisualizer:
             # Dynamically create the style for each button
             style = InlineStyleSheet(css=f"""
             :host(.color-button-{i}) {{
-                background-color: {color};
+                background-color: {color};  /* Solid background color */
                 font-weight: bold;
-                color: white;
-                border-style: solid;
-                border-width: 2px;
-                border-color: {color};
+                border: none;
+                border-radius: 5px;
+                padding: 5px 10px;
+                text-align: center;
+                cursor: pointer;
+            }}
+            :host(.color-button-{i}:hover) {{
+                opacity: 0.8;
             }}
             """)
 
@@ -92,17 +96,47 @@ class EvolvingBoundaryVisualizer:
         self.backtrack_button = Button(label="Previous", button_type="warning")
         self.backtrack_button.on_click(self.back)
 
+        # Forward 1 Epoch
+        self.forward_epoch_button = Button(label="Forward 1 Epoch", button_type="success")
+        self.forward_epoch_button.on_click(self.forward_epoch)
+
+        # Backward 1 Epoch
+        self.backward_epoch_button = Button(label="Backward 1 Epoch", button_type="warning")
+        self.backward_epoch_button.on_click(self.backward_epoch)
+
+        self.reset_button = Button(label="Reset", button_type="danger")
+        self.reset_button.on_click(self.reset)
+
+    def reset(self):
+        self.step = 0
+        self.step_slider.value = self.step
+
+    # Methods for the buttons
+    def forward_epoch(self):
+        if self.step + 4 <= self.max_steps:
+            self.step += 4
+            self.step_slider.value = self.step
+        else:
+            self.message_div.text = "You cannot go beyond the maximum step."
+
+    def backward_epoch(self):
+        if self.step - 4 >= 0:
+            self.step -= 4
+            self.step_slider.value = self.step
+        else:
+            self.message_div.text = "You are already at the first step."
+
     def next(self):
-        if self.epoch < self.max_epochs:
-            self.epoch += 1
-            self.epoch_slider.value = self.epoch
+        if self.step < self.max_steps:
+            self.step += 1
+            self.step_slider.value = self.step
         else:
             self.message_div.text = "You are already at the last step"
 
     def back(self):
-        if self.epoch > 0:
-            self.epoch -= 1
-            self.epoch_slider.value = self.epoch
+        if self.step > 0:
+            self.step -= 1
+            self.step_slider.value = self.step
         else:
             self.message_div.text = "You are already at the first step"
 
@@ -122,11 +156,11 @@ class EvolvingBoundaryVisualizer:
         self.play_pause_button.label = "Play"
 
     def animate(self):
-        if self.running and self.epoch < self.max_epochs:
-            self.epoch += 1
-            self.epoch_slider.value = self.epoch  # Triggers `slider_update`
+        if self.running and self.step < self.max_steps:
+            self.step += 1
+            self.step_slider.value = self.step  # Triggers `slider_update`
             curdoc().add_timeout_callback(self.animate, 100)  # 100ms interval
-        elif self.epoch >= self.max_epochs:
+        elif self.step >= self.max_steps:
             self.pause_animation()
 
     def reset_selection(self):
@@ -160,20 +194,20 @@ class EvolvingBoundaryVisualizer:
             self.message_div.text = ""
 
             shared_data = self.shared_resource.data
-            if self.epoch in shared_data["epoch"]:
-                epoch_index = shared_data["epoch"].index(self.epoch)
-                xx = shared_data["xx"][epoch_index]
-                yy = shared_data["yy"][epoch_index]
-                zz = shared_data["Z"][epoch_index]
-            if self.epoch % self.epoch_steps == 0:
+            if self.step in shared_data["epoch"]:
+                step_index = shared_data["epoch"].index(self.step)
+                xx = shared_data["xx"][step_index]
+                yy = shared_data["yy"][step_index]
+                zz = shared_data["Z"][step_index]
+            if self.step % self.steps == 0:
                 new_data = self.source.data.copy()
                 shared_data = self.shared_resource.data
-                if self.epoch in shared_data["epoch"]:
-                    epoch_index = shared_data["epoch"].index(self.epoch)
-                    bls = shared_data["bls"][epoch_index]
-                    bpe = shared_data["bpe"][epoch_index]
-                    sensitivity = shared_data["sensitivities"][epoch_index]
-                    softmax_deviations = shared_data["softmax_deviations"][epoch_index]
+                if self.step in shared_data["epoch"]:
+                    step_index = shared_data["epoch"].index(self.step)
+                    bls = shared_data["bls"][step_index]
+                    bpe = shared_data["bpe"][step_index]
+                    sensitivity = shared_data["sensitivities"][step_index]
+                    softmax_deviations = shared_data["softmax_deviations"][step_index]
                     new_data["bls"] = bls
                     new_data["bpe"] = bpe
                     new_data["sensitivities"] = sensitivity
@@ -195,10 +229,13 @@ class EvolvingBoundaryVisualizer:
             xs, ys = self.extract_boundary_lines(xx, yy, zz)
 
             # Update the ColumnDataSource with both the current and previous boundaries
-            current_data = self.boundary_source.data
-            if self.epoch > 1:
-                prev_xs = current_data["xs"]
-                prev_ys = current_data["ys"]
+            shared_data = self.shared_resource.data
+            if self.step > 0:
+                step_index = shared_data["epoch"].index(self.step-1)
+                xx = shared_data["xx"][step_index]
+                yy = shared_data["yy"][step_index]
+                zz = shared_data["Z"][step_index]
+                prev_xs, prev_ys = self.extract_boundary_lines(xx, yy, zz)
 
                 self.boundary_source.data = {
                     "xs": xs,
@@ -215,17 +252,18 @@ class EvolvingBoundaryVisualizer:
             self.boundary_source.data = {"xs": [], "ys": [], "prev_xs": [], "prev_ys": []}
 
     def slider_update(self, attr, old, new):
-        self.epoch = new
+        self.step = new
         xx, yy, zz = self.calculate_boundaries()
         self.update_boundary(xx, yy, zz)
-        #self.message_div.text = f"Epoch {self.epoch}/{self.max_epochs} selected."
+        self.step_slider.title = f"Epoch: {self.step // 4} Step"
 
     def get_layout(self):
         return column(
             self.plot,
             self.message_div,
-            row(self.play_pause_button, self.proceed_button, self.backtrack_button),
-            row(Spacer(width=50),self.epoch_slider, Spacer(width=50)),
+            row(self.play_pause_button, self.backtrack_button, self.proceed_button,),
+            row(self.backward_epoch_button, self.forward_epoch_button,),
+            row(Spacer(width=50),self.step_slider, Spacer(width=50)),
             row(Div(text="Tracker Colors:"), *self.tracker_buttons),
-            row(self.clear_button)
+            row(self.clear_button, self.reset_button)
         )
