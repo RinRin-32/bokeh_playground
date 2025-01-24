@@ -65,7 +65,7 @@ class EvolvingBoundaryVisualizer:
             # Dynamically create the style for each button
             style = InlineStyleSheet(css=f"""
             :host(.color-button-{i}) {{
-                background-color: {color};  /* Solid background color */
+                background-color: {color};
                 font-weight: bold;
                 border: none;
                 border-radius: 5px;
