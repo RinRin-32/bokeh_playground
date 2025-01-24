@@ -84,6 +84,28 @@ class EvolvingBoundaryVisualizer:
         self.play_pause_button.on_click(self.toggle_play_pause)
         self.running = False  # Tracks whether animation is running
 
+        # Proceed 1 Step button
+        self.proceed_button = Button(label="Next", button_type="success")
+        self.proceed_button.on_click(self.next)
+
+        # Adding back button
+        self.backtrack_button = Button(label="Previous", button_type="warning")
+        self.backtrack_button.on_click(self.back)
+
+    def next(self):
+        if self.epoch < self.max_epochs:
+            self.epoch += 1
+            self.epoch_slider.value = self.epoch
+        else:
+            self.message_div.text = "You are already at the last step"
+
+    def back(self):
+        if self.epoch > 0:
+            self.epoch -= 1
+            self.epoch_slider.value = self.epoch
+        else:
+            self.message_div.text = "You are already at the first step"
+
     def toggle_play_pause(self):
         if self.running:
             self.pause_animation()
@@ -202,7 +224,7 @@ class EvolvingBoundaryVisualizer:
         return column(
             self.plot,
             self.message_div,
-            self.play_pause_button,
+            row(self.play_pause_button, self.proceed_button, self.backtrack_button),
             row(Spacer(width=50),self.epoch_slider, Spacer(width=50)),
             row(Div(text="Tracker Colors:"), *self.tracker_buttons),
             row(self.clear_button)
