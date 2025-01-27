@@ -186,16 +186,16 @@ class EvolvingBoundaryVisualizer:
             self.message_div.text = ""
 
             shared_data = self.shared_resource.data
-            if self.step in shared_data["epoch"]:
-                step_index = shared_data["epoch"].index(self.step)
+            if self.step in shared_data["step"]:
+                step_index = shared_data["step"].index(self.step)
                 xx = shared_data["xx"][step_index]
                 yy = shared_data["yy"][step_index]
                 zz = shared_data["Z"][step_index]
             if self.step % self.steps == 0:
                 new_data = self.source.data.copy()
                 shared_data = self.shared_resource.data
-                if self.step in shared_data["epoch"]:
-                    step_index = shared_data["epoch"].index(self.step)
+                if self.step in shared_data["step"]:
+                    step_index = shared_data["step"].index(self.step)
                     bls = shared_data["bls"][step_index]
                     bpe = shared_data["bpe"][step_index]
                     sensitivity = shared_data["sensitivities"][step_index]
@@ -223,7 +223,7 @@ class EvolvingBoundaryVisualizer:
             # Update the ColumnDataSource with both the current and previous boundaries
             shared_data = self.shared_resource.data
             if self.step > 0:
-                step_index = shared_data["epoch"].index(self.step-1)
+                step_index = shared_data["step"].index(self.step-1)
                 xx = shared_data["xx"][step_index]
                 yy = shared_data["yy"][step_index]
                 zz = shared_data["Z"][step_index]
