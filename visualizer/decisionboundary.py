@@ -1,27 +1,31 @@
 from bokeh.plotting import figure
-from bokeh.layouts import column, row
-from bokeh.models import Div, Button, ColumnDataSource, GlyphRenderer, Image
+from bokeh.layouts import column
+from bokeh.models import Div, ColumnDataSource
 import numpy as np
 from torch import nn
 import torch
 from torch.utils.data import TensorDataset
-from skimage import measure  # To extract contour lines
+from skimage import measure
 import sys
 
 sys.path.append("../memory-perturbation")
 
 from lib.utils import train_model
 
-from lib.datasets import get_dataset
-
 from lib.utils import get_quick_loader
 
 from torch.utils.data import DataLoader
+from lib.models import get_model
+from ivon import IVON as IBLR
 
 class DecisionBoundaryVisualizer:
-    def __init__(self, model, shared_source):
+    def __init__(self, model, optim, scheduler, epoch, shared_source):
         self.model = model
         self.source = shared_source
+
+        self.optim = optim
+        self.scheduler = scheduler
+        self.epoch = epoch
 
         self.X = np.column_stack([self.source.data[feature] for feature in self.source.data if feature not in ['id', 'class', 'color', 'marker', 'estimated_deviation', 'true_deviation', 'bpe', 'bls']])
         self.y = self.source.data['class']
@@ -49,8 +53,6 @@ class DecisionBoundaryVisualizer:
         xx, yy, zz = self.calculate_boundaries(self.X, self.y)
         self.update_boundary(xx, yy, zz)
 
-        self.source.on_change('data', self.update)
-
     def calculate_boundaries(self, X, y):
         print("Calculating boundaries...")
         unique_classes = np.unique(y)
@@ -58,22 +60,35 @@ class DecisionBoundaryVisualizer:
             self.message_div.text = "Error: At least two classes are required to fit the model."
             return None, None, None
         else:
+
+            input_size = 2
+            nc = 2
+            self.model = get_model('small_mlp', nc, input_size, 'cuda', 1)
+            optim = IBLR(self.model.parameters(), lr=2, mc_samples=4, ess=800, weight_decay=1e-3,
+                                beta1=0.9, beta2=0.99999, hess_init=0.9)
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=30)
+
             self.message_div.text = ""
-            self.model.fit(X,y)
+            criterion = nn.CrossEntropyLoss(reduction='mean').to('cuda')
+            ds_train, ds_test, transform_train = get_dataset('MOON', return_transform=True, noise=0.2)
+            trainloader = get_quick_loader(DataLoader(ds_train, batch_size=256), device='cuda') # training
+            self.model, _ = train_model(self.model, criterion, self.optim, self.scheduler, trainloader, self.epoch, 799, 60, 'cuda', False)
+            self.model.eval()
             
             x_min, x_max = self.X[:, 0].min() - 1, self.X[:, 0].max() + 1
             y_min, y_max = self.X[:, 1].min() - 1, self.X[:, 1].max() + 1
             xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.01), 
                                  np.arange(y_min, y_max, 0.01))
             
-            grid = np.c_[xx.ravel(), yy.ravel()]
-            zz = self.model.predict(grid)
+            grid = [xx.ravel(), yy.ravel()]
+            grid = torch.tensor(grid, dtype=torch.float32).to('cuda')
+            zz = self.model(grid)
             zz = zz.reshape(xx.shape)
             
             return xx, yy, zz
 
     def extract_boundary_lines(self, xx, yy, zz):
-        contours = measure.find_contours(zz, level=0.5)  # Assuming boundary at 0.5 probability
+        contours = measure.find_contours(zz, level=0.5)
         xs, ys = [], []
         for contour in contours:
             xs.append(xx[0, 0] + contour[:, 1] * (xx[0, -1] - xx[0, 0]) / zz.shape[1])
