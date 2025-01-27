@@ -88,7 +88,7 @@ boundaryvisualizer = EvolvingBoundaryVisualizer(shared_source, shared_resource, 
 
 boundary_layout = column(boundaryvisualizer.get_layout(), width=600)
 memory_layout = column(memorymapvisualzier.get_layout(), width=600)
-sensitivity_layout = column(sensitivityvisualizer.get_layout(), width=400)
+sensitivity_layout = column(sensitivityvisualizer.get_layout(), width=450)
 
 layout = row(boundary_layout, memory_layout, sensitivity_layout)
 
