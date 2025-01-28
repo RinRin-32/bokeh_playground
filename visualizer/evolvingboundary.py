@@ -9,9 +9,10 @@ import matplotlib.pyplot as plt
 import matplotlib
 
 class EvolvingBoundaryVisualizer:
-    def __init__(self, shared_source, shared_resource, mod1, steps, colors, max_steps=30):
+    def __init__(self, shared_source, shared_resource, mod1, steps, colors, batches=4, max_steps=30):
         self.source = shared_source
         self.shared_resource = shared_resource
+        self.batches = batches
         self.mod1 = mod1
         self.steps = steps
 
@@ -48,7 +49,7 @@ class EvolvingBoundaryVisualizer:
         self.update_boundary(xx, yy, zz)
 
         # Slider for step control
-        self.step_slider = Slider(start=0, end=self.max_steps, value=0, step=1, title=f"Epoch: {self.step // 4} Step")
+        self.step_slider = Slider(start=0, end=self.max_steps, value=0, step=1, title=f"Epoch: {self.step // self.batches} Step")
         self.step_slider.on_change('value', self.slider_update)
 
         self.clear_button = Button(label="Clear Selection", button_type="danger")
@@ -247,7 +248,7 @@ class EvolvingBoundaryVisualizer:
         self.step = new
         xx, yy, zz = self.calculate_boundaries()
         self.update_boundary(xx, yy, zz)
-        self.step_slider.title = f"Epoch: {self.step // 4} Step"
+        self.step_slider.title = f"Epoch: {self.step // self.batches} Step"
 
     def get_layout(self):
         return column(
