@@ -29,10 +29,7 @@ X = all_scores[0]['X_train'].numpy()
 y = all_scores[0]['y_train'].numpy()
 ids = list(range(len(X)))
 
-# Set up classes, colors, and markers
-classes = [0, 1]
 colors = ["blue", "green"]
-markers = ["circle", "square"]
 
 # Extract 'bpe' and 'bls' from all_scores over steps
 bpe_scores = [step_data["bpe"] for step, step_data in all_scores.items()]
