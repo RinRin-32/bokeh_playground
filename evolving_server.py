@@ -1,5 +1,4 @@
 import h5py
-import numpy as np
 from bokeh.plotting import curdoc
 from visualizer.evolvingboundary import EvolvingBoundaryVisualizer
 from visualizer.evolvingmpe import EvolvingMemoryMapVisualizer
@@ -9,6 +8,7 @@ from bokeh.layouts import column, row
 import json
 import sys
 import argparse
+import os
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Launch the Bokeh server with an HDF5 file.")
@@ -22,6 +22,18 @@ args = parser.parse_args()
 
 # Load the HDF5 file
 h5_file = args.file
+
+# Check if the file has an .h5 extension
+h5_file = args.file
+if not h5_file.lower().endswith(".h5"):
+    print(f"Error: The input file '{h5_file}' is not an HDF5 (.h5) file.")
+    sys.exit(1)
+
+# Check if the file exists
+if not os.path.isfile(h5_file):
+    print(f"Error: The file '{h5_file}' does not exist.")
+    sys.exit(1)
+
 with h5py.File(h5_file, "r") as f:
     # Read config (if needed for any parameters, e.g., max_steps)
     read = f["config"]["config_data"][()]
