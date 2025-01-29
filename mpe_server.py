@@ -64,7 +64,7 @@ sensitivity_visualizer = SensitivityVisualizer(shared_source)
 # Create the layout with Memory Map on top left, Decision Boundary on bottom half, and Sensitivity on the right
 memory_map_layout = column(memory_map_visualizer.get_layout(), width=400)
 decision_boundary_layout = column(decision_boundary_visualizer.get_layout(), height=600)
-sensitivity_layout = column(sensitivity_visualizer.get_layout(), width=600)
+sensitivity_layout = column(sensitivity_visualizer.get_layout(), width=550)
 
 # Combine the layouts in a row
 layout = row(memory_map_layout, decision_boundary_layout, sensitivity_layout)
