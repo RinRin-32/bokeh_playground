@@ -12,6 +12,8 @@ from bokeh.models import ColumnDataSource
 from bokeh.layouts import column, row
 
 import json
+import sys
+import os
 
 
 # Parse command-line arguments
@@ -19,8 +21,21 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--file", type=str, required=True, help="Path to the HDF5 file")
 args = parser.parse_args()
 
+h5_file = args.file
+
+# Check if the file has an .h5 extension
+h5_file = args.file
+if not h5_file.lower().endswith(".h5"):
+    print(f"Error: The input file '{h5_file}' is not an HDF5 (.h5) file.")
+    sys.exit(1)
+
+# Check if the file exists
+if not os.path.isfile(h5_file):
+    print(f"Error: The file '{h5_file}' does not exist.")
+    sys.exit(1)
+
 # Load data from the HDF5 file
-with h5py.File(args.file, "r") as f:
+with h5py.File(h5_file, "r") as f:
     scores_group = f["scores"]
     X = np.array(scores_group["X_train"], dtype=np.float32)
     y = np.array(scores_group["y_train"], dtype=np.int64)

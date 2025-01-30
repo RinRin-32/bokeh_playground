@@ -12,12 +12,7 @@ import os
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Launch the Bokeh server with an HDF5 file.")
-parser.add_argument(
-    "--file",
-    type=str,
-    required=True,
-    help="Path to the HDF5 file (e.g., './data/test_2_evolving_memory_maps.h5')."
-)
+parser.add_argument("--file", type=str, required=True, help="Path to the HDF5 file")
 args = parser.parse_args()
 
 # Load the HDF5 file
