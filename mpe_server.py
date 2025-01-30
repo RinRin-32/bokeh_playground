@@ -1,6 +1,7 @@
-import pickle
-
+import argparse
+import h5py
 from bokeh.plotting import curdoc
+import numpy as np
 
 from visualizer.decisionboundary import DecisionBoundaryVisualizer
 from visualizer.memorymap import MemoryMapVisualizer
@@ -10,34 +11,31 @@ from bokeh.models import ColumnDataSource
 
 from bokeh.layouts import column, row
 
-
-dir = 'data/'
-#file = open(dir + 'nonlinear_moon_50_memory_maps_scores.pkl', 'rb')
-file = open(dir + '30_epoch_mlp_memory_maps_scores.pkl', 'rb')
-scores_dict = pickle.load(file)
-file.close()
+import json
 
 
-#file = open(dir + 'nonlinear_moon_50_memory_maps_retrain.pkl', 'rb')
-file = open(dir + '30_epoch_mlp_memory_maps_retrain.pkl', 'rb')
-deviation_dict = pickle.load(file)
-file.close()
+# Parse command-line arguments
+parser = argparse.ArgumentParser()
+parser.add_argument("--file", type=str, required=True, help="Path to the HDF5 file")
+args = parser.parse_args()
 
-#X,y = make_moons(n_samples=200, noise=5, random_state=42)
+# Load data from the HDF5 file
+with h5py.File(args.file, "r") as f:
+    scores_group = f["scores"]
+    X = np.array(scores_group["X_train"], dtype=np.float32)
+    y = np.array(scores_group["y_train"], dtype=np.int64)
+    estimated_deviation = np.array(scores_group["sensitivities"], dtype=np.float64)
+    true_deviation = np.array(scores_group["softmax_deviations"], dtype=np.float64)
+    bpe = np.array(scores_group["bpe"], dtype=np.float32)
+    bls = np.array(scores_group["bls"], dtype=np.float32)
 
-X = scores_dict['X_train'].numpy()
-y = scores_dict['y_train'].numpy()
-estimated_deviation = scores_dict['sensitivities']
+    read = f["config"]["config_data"][()]
+    config_json = read.decode("utf-8")
+    config = json.loads(config_json)
+
 # Generate IDs
 ids = list(range(len(X)))
 
-softmax = deviation_dict['softmax_deviations']
-
-true_deviation = softmax
-bpe = scores_dict['bpe']
-bls = scores_dict['bls']
-
-# Shared ColumnDataSource with random values for the new metrics
 shared_source = ColumnDataSource(data={
     "id": ids,
     "x": X[:, 0],
@@ -57,7 +55,7 @@ colors = ["blue", "green"]
 markers = ["circle", "square"]
 
 # Create the visualizer instances
-decision_boundary_visualizer = DecisionBoundaryVisualizer(shared_source)
+decision_boundary_visualizer = DecisionBoundaryVisualizer(shared_source, config)
 memory_map_visualizer = MemoryMapVisualizer(shared_source, colors, decision_boundary_visualizer)
 sensitivity_visualizer = SensitivityVisualizer(shared_source)
 
