@@ -51,23 +51,21 @@ with h5py.File(h5_file, "r") as f:
 # Generate IDs
 ids = list(range(len(X)))
 
+colors = ["blue", "green"]
+marker = ["circle", "square"]
+
 shared_source = ColumnDataSource(data={
     "id": ids,
     "x": X[:, 0],
     "y": X[:, 1],
     "class": y,
-    "color": ["blue" if cls == 0 else "green" for cls in y],
-    "marker": ["circle" if cls == 0 else "square" for cls in y],
+    "color": [colors[cls] for cls in y],
+    "marker": [marker[cls] for cls in y],
     "estimated_deviation": estimated_deviation,
     "true_deviation": true_deviation,
     "bpe": bpe,
     "bls": bls
 })
-
-# Set up classes, colors, and markers
-classes = [0, 1]
-colors = ["blue", "green"]
-markers = ["circle", "square"]
 
 # Create the visualizer instances
 decision_boundary_visualizer = DecisionBoundaryVisualizer(shared_source, config)

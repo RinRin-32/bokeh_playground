@@ -59,6 +59,7 @@ with h5py.File(h5_file, "r") as f:
 
 # Define colors and markers based on class
 colors = ["blue", "green"]
+marker = ["circle", "square"]
 
 # Prepare the shared sources
 shared_source = ColumnDataSource(data={
@@ -67,7 +68,7 @@ shared_source = ColumnDataSource(data={
     "y": X_train[:, 1],  # Second dimension of X_train
     "class": y_train,  # Class labels
     "color": [colors[cls] for cls in y_train],
-    "marker": ["circle" if cls == 0 else "square" for cls in y_train],
+    "marker": [marker[cls] for cls in y_train],
     "bpe": bpe_scores[0],
     "bls": bls_scores[0],
     "sensitivities": sensitivity_scores[0],
