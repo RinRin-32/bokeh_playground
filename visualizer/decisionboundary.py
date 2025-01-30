@@ -72,7 +72,7 @@ class DecisionBoundaryVisualizer:
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=self.max_epochs)
 
             self.message_div.text = ""
-            criterion = nn.CrossEntropyLoss().to('cuda')
+            criterion = nn.CrossEntropyLoss().to(self.device)
             ds_train = TensorDataset(torch.tensor(X, dtype=torch.float32), torch.tensor(y, dtype=torch.long))
             trainloader = get_quick_loader(DataLoader(ds_train, batch_size=256, shuffle=False), device=self.device) # training
             self.model, _ = train_model(self.model, criterion, optim, scheduler, trainloader, self.max_epochs, self.n_retrain, None, self.device)
@@ -84,7 +84,7 @@ class DecisionBoundaryVisualizer:
                                  np.arange(y_min, y_max, 0.01))
             
             grid = np.c_[xx.ravel(), yy.ravel()]
-            grid = torch.tensor(grid, dtype=torch.float32).to('cuda')
+            grid = torch.tensor(grid, dtype=torch.float32).to(self.device)
             
             with torch.no_grad():
                 logits = self.model(grid)
