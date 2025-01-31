@@ -1,0 +1,21 @@
+name: mpe
+channels:
+  - defaults
+  - pytorch
+  - nvidia
+dependencies:
+  - python < 3.13
+  - matplotlib
+  - scikit-learn
+  - tqdm
+  - pip
+  - pip:
+    - torch
+    - torchvision
+    - torchaudio
+    - ivon-opt==0.1
+    - laplace-torch==0.1a2
+    - bokeh
+    - h5py
+    - scikit-image
+    - git+https://git@github.com/wiseodd/asdl@asdfghjkl
