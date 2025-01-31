@@ -33,6 +33,17 @@ def print_h5_structure(h5_file, project_type):
                 else:
                     print_group(name, obj)
 
+            # Print the content of 'config' group if it exists
+            if "config" in f:
+                print(f"\nContent of the 'config' group:")
+                config_data = f["config"].get("config_data")
+                if config_data:
+                    config_json = config_data[()].decode('utf-8')
+                    config = json.loads(config_json)
+                    print(json.dumps(config, indent=4))
+                else:
+                    print("  'config_data' not found in 'config' group.")
+
     except Exception as e:
         print(f"Error: Failed to read HDF5 file '{h5_file}' to print its structure. {str(e)}")
 

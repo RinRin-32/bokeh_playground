@@ -32,6 +32,26 @@ Dataset: scores/indices_retrain | Shape: (800,) | Dtype: int64
 Dataset: scores/sensitivities | Shape: (800,) | Dtype: float64
 Dataset: scores/softmax_deviations | Shape: (800,) | Dtype: float64
 Dataset: scores/y_train | Shape: (800,) | Dtype: int64
+
+Content of the 'config' group:
+{
+    "input_size": 2,
+    "nc": 2,
+    "model": "small_mlp",
+    "device": "cpu",
+    "optimizer": "iblr",
+    "optimizer_params": {
+        "lr": 2,
+        "lrmin": 0.001,
+        "delta": 60,
+        "hess_init": 0.9,
+        "lr_retrain": 2,
+        "lrmin_retrain": 0.001
+    },
+    "max_epochs": 30,
+    "loss_criterion": "CrossEntropyLoss",
+    "n_retrain": 800
+}
 ```
 
 ### Expected response for correct h5 format for evolving_server
@@ -46,9 +66,25 @@ Dataset: coord/y_train | Shape: (800,) | Dtype: int64
 Group: scores
   Found 124 steps (e.g., 'step_0', 'step_1', ...) under scores
   Example step: scores/step_0 | Datasets: bls, bpe, decision_boundary, sensitivities, softmax_deviations
+
+Content of the 'config' group:
+{
+    "total_step": 124,
+    "epoch": 31,
+    "log_step": 1,
+    "total_batch": 4
+}
 ```
 
 ## Serving your Bokeh server
+```mpe_server.py``` plots the memory maps of each data points accompanied by a sensitivity plot. Since the graphs are interactive, ideally, users can interact and remove points to their likings and see how the model would train when said point is perturbed.
+
+insert video here
+
+```evolving_server.py``` is a interactive animation to visualize the behavior of model during training. All the data used here are calculated and store in h5 file so this visual isn't a real time rendering like the previous mpe_server with real time decision boundary calculations. Per steps trained, this interactive plot displays the changes in model sensitivitiy to data points as well as the changes in Memory Maps. For this plot, user get to select areas of interest and highlight in their desired color for ease of visualization.
+
+insert video here
+
 ```
-bokeh serve --show <server you'd like to run> --args --file <path/to/your/experiment>.h5
+bokeh serve --show <server of choice> --args --file <path/to/your/experiment>.h5
 ```
