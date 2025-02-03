@@ -16,9 +16,7 @@ class EvolvingMemoryMapVisualizer:
         p.yaxis.axis_label = 'Bayesian Prediction Error'
 
         # Plot the memory map using the source
-        p.scatter(
-            x='bls', y='bpe', color='color', marker='marker', size=8, source=self.shared_source
-        )
+        p.scatter(x='bls', y='bpe', color='color', marker='marker', alpha='alpha', size=8, source=self.shared_source)
 
         return p
 

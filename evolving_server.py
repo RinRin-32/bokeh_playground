@@ -69,6 +69,7 @@ shared_source = ColumnDataSource(data={
     "class": y_train,  # Class labels
     "color": [colors[cls] for cls in y_train],
     "marker": [marker[cls] for cls in y_train],
+    "alpha": [1.0] * len(y_train),
     "bpe": bpe_scores[0],
     "bls": bls_scores[0],
     "sensitivities": sensitivity_scores[0],

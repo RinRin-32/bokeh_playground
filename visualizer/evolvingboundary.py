@@ -37,7 +37,7 @@ class EvolvingBoundaryVisualizer:
 
         self.boundary_source = ColumnDataSource(data={"xs": [], "ys": [], "prev_xs": [], "prev_ys": []})
 
-        self.plot.scatter("x", "y", size=8, source=self.source, color="color", marker="marker")
+        self.plot.scatter("x", "y", size=8, source=self.source, color="color", marker="marker", alpha="alpha")
         self.plot.multi_line(xs="xs", ys="ys", source=self.boundary_source, line_width=2, color="black")
         self.plot.multi_line(xs="prev_xs", ys="prev_ys", source=self.boundary_source, line_width=2, color="grey")
 
@@ -160,6 +160,7 @@ class EvolvingBoundaryVisualizer:
         new_data = self.source.data.copy()
         for idx in range(len(new_data["color"])):
             new_data["color"][idx] = self.colors[int(new_data["class"][idx])]
+            new_data["alpha"][idx] = 1.0
 
         self.source.data = new_data
         self.source.selected.indices = []  # Clear selection
@@ -175,10 +176,12 @@ class EvolvingBoundaryVisualizer:
         for idx in range(len(new_data["color"])):  
             if idx in selected_indices:
                 new_data["color"][idx] = color
+                new_data["alpha"][idx] = 1.0
             elif new_data["color"][idx] != self.colors[int(new_data["class"][idx])] and new_data["color"][idx] != 'grey':
                 continue
             else:
                 new_data["color"][idx] = "grey"
+                new_data["alpha"][idx] = 0.3
 
         self.source.data = new_data
         self.message_div.text = f"Applied color '{color}' to selected points."
