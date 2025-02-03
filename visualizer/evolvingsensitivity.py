@@ -17,7 +17,7 @@ class EvolvingSensitivityVisualizer:
 
         # Plot all data points using the source
         p.scatter(
-            x='softmax_deviations', y='sensitivities', color='color', marker='marker', alpha='alpha', size=8, source=self.shared_source
+            x='softmax_deviations', y='sensitivities', color='color', marker='marker', alpha='alpha', size='size', source=self.shared_source
         )
 
         # Initialize the regression line (will be updated dynamically)

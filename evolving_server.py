@@ -70,6 +70,7 @@ shared_source = ColumnDataSource(data={
     "color": [colors[cls] for cls in y_train],
     "marker": [marker[cls] for cls in y_train],
     "alpha": [1.0] * len(y_train),
+    "size": [6] * len(y_train),
     "bpe": bpe_scores[0],
     "bls": bls_scores[0],
     "sensitivities": sensitivity_scores[0],
@@ -101,7 +102,7 @@ boundaryvisualizer = EvolvingBoundaryVisualizer(
 )
 
 # Layout
-boundary_layout = column(boundaryvisualizer.get_layout(), width=600)
+boundary_layout = column(boundaryvisualizer.get_layout(), width=575, height=575)
 memory_layout = column(memorymapvisualizer.get_layout(), width=600)
 sensitivity_layout = column(sensitivityvisualizer.get_layout(), width=450)
 

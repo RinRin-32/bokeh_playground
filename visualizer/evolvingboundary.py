@@ -37,7 +37,7 @@ class EvolvingBoundaryVisualizer:
 
         self.boundary_source = ColumnDataSource(data={"xs": [], "ys": [], "prev_xs": [], "prev_ys": []})
 
-        self.plot.scatter("x", "y", size=8, source=self.source, color="color", marker="marker", alpha="alpha")
+        self.plot.scatter("x", "y", source=self.source, size="size", color="color", marker="marker", alpha="alpha")
         self.plot.multi_line(xs="xs", ys="ys", source=self.boundary_source, line_width=2, color="black")
         self.plot.multi_line(xs="prev_xs", ys="prev_ys", source=self.boundary_source, line_width=2, color="grey")
 
@@ -56,7 +56,8 @@ class EvolvingBoundaryVisualizer:
         self.clear_button.on_click(self.reset_selection)
 
         # Colors for tracker buttons (using matplotlib tab10 colors)
-        self.tracker_colors = [plt.cm.tab10(i+3) for i in range(6)]  # Store as RGBA
+        #self.tracker_colors = [plt.cm.tab10(i+3) for i in range(6)]  # Store as RGBA
+        self.tracker_colors = ["#d55e00", "#cc79a7", "#0072b2", "#f0e442", "#009e73"]
         self.tracker_colors_hex = [matplotlib.colors.rgb2hex(c) for c in self.tracker_colors]  # Store as hex
 
         # Creating individual buttons for color selection
@@ -161,6 +162,7 @@ class EvolvingBoundaryVisualizer:
         for idx in range(len(new_data["color"])):
             new_data["color"][idx] = self.colors[int(new_data["class"][idx])]
             new_data["alpha"][idx] = 1.0
+            new_data["size"][idx] = 6
 
         self.source.data = new_data
         self.source.selected.indices = []  # Clear selection
@@ -177,11 +179,12 @@ class EvolvingBoundaryVisualizer:
             if idx in selected_indices:
                 new_data["color"][idx] = color
                 new_data["alpha"][idx] = 1.0
+                new_data["size"][idx] = 10
             elif new_data["color"][idx] != self.colors[int(new_data["class"][idx])] and new_data["color"][idx] != 'grey':
                 continue
             else:
                 new_data["color"][idx] = "grey"
-                new_data["alpha"][idx] = 0.3
+                new_data["alpha"][idx] = 0.2
 
         self.source.data = new_data
         self.message_div.text = f"Applied color '{color}' to selected points."
