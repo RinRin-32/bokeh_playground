@@ -172,8 +172,13 @@ class EvolvingBoundaryVisualizer:
             return
 
         new_data = self.source.data.copy()
-        for idx in selected_indices:
-            new_data["color"][idx] = color
+        for idx in range(len(new_data["color"])):  
+            if idx in selected_indices:
+                new_data["color"][idx] = color
+            elif new_data["color"][idx] != self.colors[int(new_data["class"][idx])] and new_data["color"][idx] != 'grey':
+                continue
+            else:
+                new_data["color"][idx] = "grey"
 
         self.source.data = new_data
         self.message_div.text = f"Applied color '{color}' to selected points."
