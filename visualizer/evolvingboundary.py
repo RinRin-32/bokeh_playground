@@ -1,6 +1,6 @@
 from bokeh.plotting import figure
 from bokeh.layouts import column, row
-from bokeh.models import Div, Slider, ColumnDataSource, Button, Spacer, InlineStyleSheet, Div
+from bokeh.models import Div, Slider, ColumnDataSource, Button, Spacer, InlineStyleSheet, Div, HoverTool
 from bokeh.models.widgets import RadioButtonGroup
 import numpy as np
 from skimage import measure
@@ -184,7 +184,7 @@ class EvolvingBoundaryVisualizer:
                 continue
             else:
                 new_data["color"][idx] = "grey"
-                new_data["alpha"][idx] = 0.2
+                new_data["alpha"][idx] = 0.4
 
         self.source.data = new_data
         self.message_div.text = f"Applied color '{color}' to selected points."
@@ -212,10 +212,14 @@ class EvolvingBoundaryVisualizer:
                     bpe = shared_data["bpe"][step_index]
                     sensitivity = shared_data["sensitivities"][step_index]
                     softmax_deviations = shared_data["softmax_deviations"][step_index]
+                    marginal_vars = shared_data["average_marginal_vars"][step_index]
+                    lambdas = shared_data["average_lambda"][step_index]
                     new_data["bls"] = bls
                     new_data["bpe"] = bpe
                     new_data["sensitivities"] = sensitivity
                     new_data["softmax_deviations"] = softmax_deviations
+                    new_data["average_marginal_vars"] = marginal_vars
+                    new_data["average_lambda"] = lambdas
                     self.source.data = new_data
                     self.mod1.update()
             return xx, yy, zz
