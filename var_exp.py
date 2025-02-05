@@ -96,8 +96,8 @@ shared_resource = ColumnDataSource(data={
 })
 
 # Initialize visualizers
-sensitivityvisualizer = EvolvingSensitivityVisualizer(shared_source)
-memorymapvisualizer = EvolvingMemoryMapVisualizer(shared_source)
+sensitivityvisualizer = EvolvingSensitivityVisualizer(shared_source, True)
+memorymapvisualizer = EvolvingMemoryMapVisualizer(shared_source, True)
 boundaryvisualizer = EvolvingBoundaryVisualizer(
     shared_source,
     shared_resource,
@@ -105,7 +105,7 @@ boundaryvisualizer = EvolvingBoundaryVisualizer(
     log_step,
     colors,
     total_batch,
-    max_steps=total_steps - 1
+    max_steps=total_steps - 1, lambda_var_plot=True
 )
 variancelambdaplot = VarianceLambdaPlot(shared_source)
 

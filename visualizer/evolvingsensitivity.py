@@ -4,16 +4,17 @@ import numpy as np
 from bokeh.models import HoverTool
 
 class EvolvingSensitivityVisualizer:
-    def __init__(self, shared_source):
+    def __init__(self, shared_source, lambda_var_plot=False):
         self.shared_source = shared_source
         self.plot = self.create_plot()
 
-        hover = HoverTool()
-        hover.tooltips = [
-            ("Average Marginal Vars", "@average_marginal_vars"),
-            ("Average Lambda", "@average_lambda")
-        ]
-        self.plot.add_tools(hover)
+        if lambda_var_plot:
+            hover = HoverTool()
+            hover.tooltips = [
+                ("Average Marginal Vars", "@average_marginal_vars"),
+                ("Average Lambda", "@average_lambda")
+            ]
+            self.plot.add_tools(hover)
 
     def create_plot(self):
         # Set up the figure

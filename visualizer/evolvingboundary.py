@@ -9,12 +9,13 @@ import matplotlib.pyplot as plt
 import matplotlib
 
 class EvolvingBoundaryVisualizer:
-    def __init__(self, shared_source, shared_resource, mod1, steps, colors, batches=4, max_steps=30):
+    def __init__(self, shared_source, shared_resource, mod1, steps, colors, batches=4, max_steps=30, lambda_var_plot=False):
         self.source = shared_source
         self.shared_resource = shared_resource
         self.batches = batches
         self.mod1 = mod1
         self.steps = steps
+        self.lambda_var_plot=lambda_var_plot
 
         self.X = np.column_stack([self.source.data[feature] for feature in self.source.data if feature in ['x', 'y']])
         self.y = self.source.data['class']
@@ -69,6 +70,10 @@ class EvolvingBoundaryVisualizer:
             style_btn = f""".bk-btn {{
                 color: {color};
                 background-color: {color};
+            }}
+            .bk-btn:hover {{
+                background-color: {color};
+                opacity: 0.8; /* Optional: Adds a slight transparency effect on hover */
             }}
             """
 
@@ -212,14 +217,15 @@ class EvolvingBoundaryVisualizer:
                     bpe = shared_data["bpe"][step_index]
                     sensitivity = shared_data["sensitivities"][step_index]
                     softmax_deviations = shared_data["softmax_deviations"][step_index]
-                    marginal_vars = shared_data["average_marginal_vars"][step_index]
-                    lambdas = shared_data["average_lambda"][step_index]
                     new_data["bls"] = bls
                     new_data["bpe"] = bpe
                     new_data["sensitivities"] = sensitivity
                     new_data["softmax_deviations"] = softmax_deviations
-                    new_data["average_marginal_vars"] = marginal_vars
-                    new_data["average_lambda"] = lambdas
+                    if self.lambda_var_plot:
+                        marginal_vars = shared_data["average_marginal_vars"][step_index]
+                        lambdas = shared_data["average_lambda"][step_index]
+                        new_data["average_marginal_vars"] = marginal_vars
+                        new_data["average_lambda"] = lambdas
                     self.source.data = new_data
                     self.mod1.update()
             return xx, yy, zz
