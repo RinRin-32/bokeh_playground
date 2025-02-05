@@ -48,6 +48,7 @@ with h5py.File(h5_file, "r") as f:
     bpe_scores = [f[f"scores/step_{step}"]["bpe"][()] for step in range(total_steps)]
     bls_scores = [f[f"scores/step_{step}"]["bls"][()] for step in range(total_steps)]
     softmax_deviation = [f[f"scores/step_{step}"]["softmax_deviations"][()] for step in range(total_steps)]
+    ##maybe saves the ranges of data here to fix the plot scaling?
 
     # Extract decision boundary data
     xx = [f[f"scores/step_{step}"]["decision_boundary"]["xx"][:] for step in range(total_steps)]

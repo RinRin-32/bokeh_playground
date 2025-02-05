@@ -21,12 +21,15 @@ class EvolvingMemoryMapVisualizer:
         p = figure(title="Memory Map Visualization",
                    width=600, height=600,
                    tools='tap,box_select, box_zoom, reset',
-                   active_drag='box_select')
+                   active_drag='box_select',
+                   )
         p.xaxis.axis_label = 'Bayesian Leverage Score'
         p.yaxis.axis_label = 'Bayesian Prediction Error'
 
         # Plot the memory map using the source
         p.scatter(x='bls', y='bpe', color='color', marker='marker', alpha='alpha', size='size', source=self.shared_source)
+
+        p.x_range.only_visible = p.y_range.only_visible = True
 
         return p
 

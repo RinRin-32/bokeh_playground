@@ -33,6 +33,8 @@ class EvolvingSensitivityVisualizer:
         # Initialize the regression line (will be updated dynamically)
         self.regression_line = p.line([], [], line_width=2, line_color="red", line_dash="dotted")
 
+        p.x_range.only_visible = p.y_range.only_visible = True
+
         return p
 
     def update(self):
