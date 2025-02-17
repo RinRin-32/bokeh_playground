@@ -40,11 +40,11 @@ class LabelNoisePlot:
             var labels = [];
             
             for (var i = 0; i < source.data['x'].length; i++) {
-                source.data['color'][i] = 'red';  // Reset all to red
+                source.data['color'][i] = 'grey';  // Reset all to red
             }
             
             for (var i = 0; i < selected_indices.length; i++) {
-                source.data['color'][selected_indices[i]] = 'grey';  // Selected points become grey
+                source.data['color'][selected_indices[i]] = 'red';  // Selected points become red
                 imgs.push(source.data['img'][selected_indices[i]]);
                 labels.push(source.data['label'][selected_indices[i]]);
             }
