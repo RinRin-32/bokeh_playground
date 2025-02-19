@@ -1,9 +1,9 @@
-from bokeh.plotting import figure
+from bokeh.models import Button, CustomJS, Slider, ColumnDataSource, Div
 from bokeh.layouts import column, row
-from bokeh.models import ColumnDataSource, Button, Slider, Div, CustomJS
 from bokeh.io import curdoc
 import numpy as np
 import matplotlib
+from bokeh.plotting import figure
 
 class EvolvingBoundaryVisualizer:
     def __init__(self, shared_source, shared_resource, mod1, steps, colors, batches=4, max_steps=30):
@@ -16,7 +16,6 @@ class EvolvingBoundaryVisualizer:
 
         self.X = np.column_stack([self.source.data[feature] for feature in self.source.data if feature in ['x', 'y']])
         self.y = self.source.data['class']
-
         self.classes = np.unique(self.y)
 
         x_min, x_max = self.X[:, 0].min() - 1, self.X[:, 0].max() + 1
@@ -51,21 +50,15 @@ class EvolvingBoundaryVisualizer:
         self.tracker_colors = ["#d55e00", "#cc79a7", "#0072b2", "#f0e442", "#009e73"]
         self.tracker_colors_hex = [matplotlib.colors.rgb2hex(c) for c in self.tracker_colors]  # Store as hex
 
-        # Creating individual buttons for color selection
+        # Tracker buttons setup
         self.tracker_buttons = []
-        tracker_buttons = []
         for i, color in enumerate(self.tracker_colors_hex):
-            # Dynamically create the style for each button
-
             style_btn = f""".bk-btn {{
                 color: {color};
                 background-color: {color};
-            }}
-            """
+            }}"""
             
             button = Button(label=f"", width=50, height=50, stylesheets=[style_btn], css_classes=[f'color-button-{i}'])
-
-            # JS callback for applying the color
             button_callback = CustomJS(args={"source": self.source, "color": color, "all_color": self.tracker_colors}, code="""
                 var selected_indices = source.selected.indices;
                 if (selected_indices.length == 0) {
@@ -86,9 +79,11 @@ class EvolvingBoundaryVisualizer:
                 }
                 source.change.emit();
             """)
-
             button.js_on_click(button_callback)
             self.tracker_buttons.append(button)
+
+        self.is_playing = False  # Variable to track whether the animation is playing
+        self.step_value = 0  # Track the current step
 
         self.setup_callbacks()
 
@@ -107,13 +102,11 @@ class EvolvingBoundaryVisualizer:
                 source.data["sensitivities"] = shared_data["sensitivities"][step_index];
                 source.data["softmax_deviations"] = shared_data["softmax_deviations"][step_index];
 
-                // Update boundary source with current step's xs and ys
                 boundary_source.data["xs"] = shared_data["xs"][step_index];
                 boundary_source.data["ys"] = shared_data["ys"][step_index];
                 boundary_source.data["prev_xs"] = shared_data["xs"][step_index];
                 boundary_source.data["prev_ys"] = shared_data["ys"][step_index];
 
-                // Update prev_xs and prev_ys with the previous step's xs and ys
                 if (step_index > 0) {
                     boundary_source.data["prev_xs"] = shared_data["xs"][step_index - 1];
                     boundary_source.data["prev_ys"] = shared_data["ys"][step_index - 1];
@@ -124,16 +117,25 @@ class EvolvingBoundaryVisualizer:
             }
         """))
 
-        self.play_pause_button.js_on_click(CustomJS(args={"slider": self.step_slider}, code="""
+        # Update play/pause button behavior
+        self.play_pause_button.js_on_click(CustomJS(args={"slider": self.step_slider, "button": self.play_pause_button}, code="""
             var step = slider.value;
-            function animate() {
-                if (step < slider.end) {
-                    step += 1;
-                    slider.value = step;
-                    setTimeout(animate, 200);
+            var is_playing = button.label == "Pause";  // Check if currently playing
+            
+            if (is_playing) {
+                button.label = "Play";  // Change to "Play" when pausing
+                clearTimeout(slider._timeout);
+            } else {
+                button.label = "Pause";  // Change to "Pause" when playing
+                function animate() {
+                    if (step < slider.end) {
+                        step += 1;
+                        slider.value = step;
+                        slider._timeout = setTimeout(animate, 100);
+                    }
                 }
+                animate();
             }
-            animate();
         """))
 
         self.reset_button.js_on_click(CustomJS(args={"slider": self.step_slider}, code="""
