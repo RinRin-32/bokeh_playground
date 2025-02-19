@@ -89,7 +89,8 @@ source = ColumnDataSource(data=dict(
     x=list(range(len(sort_noises))),
     y=sort_noises,
     label=labels.astype(str),  # Convert labels to string for tooltip
-    img=image_base64_list  # Add base64 images
+    img=image_base64_list,  # Add base64 images
+    color= ['grey'] * len(sort_noises)
 ))
 
 labelnoise = LabelNoisePlot(source)
