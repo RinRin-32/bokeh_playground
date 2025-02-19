@@ -9,6 +9,15 @@ import json
 import sys
 import argparse
 import os
+from skimage import measure
+
+def extract_boundary_lines(xx, yy, zz):
+        contours = measure.find_contours(zz, level=0.5)  # Assuming boundary at 0.5 probability
+        xs, ys = [], []
+        for contour in contours:
+            xs.append(xx[0, 0] + contour[:, 1] * (xx[0, -1] - xx[0, 0]) / zz.shape[1])
+            ys.append(yy[0, 0] + contour[:, 0] * (yy[-1, 0] - yy[0, 0]) / zz.shape[0])
+        return xs, ys
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Launch the Bokeh server with an HDF5 file.")
@@ -48,7 +57,6 @@ with h5py.File(h5_file, "r") as f:
     bpe_scores = [f[f"scores/step_{step}"]["bpe"][()] for step in range(total_steps)]
     bls_scores = [f[f"scores/step_{step}"]["bls"][()] for step in range(total_steps)]
     softmax_deviation = [f[f"scores/step_{step}"]["softmax_deviations"][()] for step in range(total_steps)]
-    ##maybe saves the ranges of data here to fix the plot scaling?
 
     # Extract decision boundary data
     xx = [f[f"scores/step_{step}"]["decision_boundary"]["xx"][:] for step in range(total_steps)]
@@ -61,6 +69,32 @@ with h5py.File(h5_file, "r") as f:
 # Define colors and markers based on class
 colors = ["blue", "green"]
 marker = ["circle", "square"]
+
+
+xs = []
+ys = []
+for step in range(total_steps):
+    xx_step = xx[step]
+    yy_step = yy[step]
+    zz_step = Z[step]
+    
+    # Extract boundary for each step
+    boundary_x, boundary_y = extract_boundary_lines(xx_step, yy_step, zz_step)
+    xs.append(boundary_x)
+    ys.append(boundary_y)
+
+shared_resource = ColumnDataSource(data={
+    "step": list(range(total_steps)),
+    "xx": xx,
+    "yy": yy,
+    "Z": Z,
+    "bpe": bpe_scores,
+    "bls": bls_scores,
+    "sensitivities": sensitivity_scores,
+    "softmax_deviations": softmax_deviation,
+    "xs": xs,
+    "ys": ys,
+})
 
 # Prepare the shared sources
 shared_source = ColumnDataSource(data={
@@ -78,24 +112,12 @@ shared_source = ColumnDataSource(data={
     "softmax_deviations": softmax_deviation[0],
 })
 
-shared_resource = ColumnDataSource(data={
-    "step": list(range(total_steps)),
-    "xx": xx,
-    "yy": yy,
-    "Z": Z,
-    "bpe": bpe_scores,
-    "bls": bls_scores,
-    "sensitivities": sensitivity_scores,
-    "softmax_deviations": softmax_deviation,
-})
-
 # Initialize visualizers
 sensitivityvisualizer = EvolvingSensitivityVisualizer(shared_source)
 memorymapvisualizer = EvolvingMemoryMapVisualizer(shared_source)
 boundaryvisualizer = EvolvingBoundaryVisualizer(
     shared_source,
     shared_resource,
-    sensitivityvisualizer,
     log_step,
     colors,
     total_batch,

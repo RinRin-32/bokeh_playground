@@ -6,13 +6,13 @@ import matplotlib
 from bokeh.plotting import figure
 
 class EvolvingBoundaryVisualizer:
-    def __init__(self, shared_source, shared_resource, mod1, steps, colors, batches=4, max_steps=30):
+    def __init__(self, shared_source, shared_resource, steps, colors, batches=4, max_steps=30):
         self.source = shared_source
         self.shared_resource = shared_resource
         self.batches = batches
-        self.mod1 = mod1
         self.steps = steps
         self.colors = colors
+        self.max_steps = max_steps
 
         self.X = np.column_stack([self.source.data[feature] for feature in self.source.data if feature in ['x', 'y']])
         self.y = self.source.data['class']
@@ -21,7 +21,6 @@ class EvolvingBoundaryVisualizer:
         x_min, x_max = self.X[:, 0].min() - 1, self.X[:, 0].max() + 1
         y_min, y_max = self.X[:, 1].min() - 1, self.X[:, 1].max() + 1
 
-        self.max_steps = max_steps
         self.message_div = Div(text="", width=400, height=50)
         self.epoch_div = Div(text=f"Epoch: 0", width=60, height=20)  # New Div to display Epoch
 
