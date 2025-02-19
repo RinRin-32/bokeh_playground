@@ -33,20 +33,20 @@ class EvolvingBoundaryVisualizer:
             tools="tap,box_select,box_zoom,reset,pan",
             active_drag="box_select"
         )
-        
-        self.boundary_source = ColumnDataSource(data={"xs": [], "ys": []
-                                                      #, "prev_xs": [], "prev_ys": []
-                                                      })
+
+        # Initialize boundary source with data from step 0
+        initial_xs = shared_resource.data["xs"][0]
+        initial_ys = shared_resource.data["ys"][0]
+        self.boundary_source = ColumnDataSource(data={"xs": initial_xs, "ys": initial_ys, "prev_xs": initial_xs, "prev_ys": initial_ys})
 
         self.plot.scatter("x", "y", source=self.source, size="size", color="color", marker="marker", alpha="alpha")
+        self.plot.multi_line(xs="prev_xs", ys="prev_ys", source=self.boundary_source, line_width=2, color="grey")
         self.plot.multi_line(xs="xs", ys="ys", source=self.boundary_source, line_width=2, color="black")
-        #self.plot.multi_line(xs="prev_xs", ys="prev_ys", source=self.source, line_width=2, color="grey")
 
-        
         self.step_slider = Slider(start=0, end=self.max_steps, value=0, step=1, title="Epoch Step")
         self.play_pause_button = Button(label="Play")
         self.reset_button = Button(label="Reset", button_type="danger")
-        
+
         self.setup_callbacks()
 
     def setup_callbacks(self):
@@ -64,8 +64,18 @@ class EvolvingBoundaryVisualizer:
                 source.data["sensitivities"] = shared_data["sensitivities"][step_index];
                 source.data["softmax_deviations"] = shared_data["softmax_deviations"][step_index];
 
+                // Update boundary source with current step's xs and ys
                 boundary_source.data["xs"] = shared_data["xs"][step_index];
                 boundary_source.data["ys"] = shared_data["ys"][step_index];
+                boundary_source.data["prev_xs"] = shared_data["xs"][step_index];
+                boundary_source.data["prev_ys"] = shared_data["ys"][step_index];
+
+                // Update prev_xs and prev_ys with the previous step's xs and ys
+                if (step_index > 0) {
+                    boundary_source.data["prev_xs"] = shared_data["xs"][step_index - 1];
+                    boundary_source.data["prev_ys"] = shared_data["ys"][step_index - 1];
+                }
+
                 source.change.emit();
                 boundary_source.change.emit();
             }
@@ -86,7 +96,7 @@ class EvolvingBoundaryVisualizer:
         self.reset_button.js_on_click(CustomJS(args={"slider": self.step_slider}, code="""
             slider.value = 0;
         """))
-    
+
     def get_layout(self):
         return column(
             self.plot,
