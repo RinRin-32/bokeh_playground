@@ -21,7 +21,6 @@ class EvolvingBoundaryVisualizer:
         x_min, x_max = self.X[:, 0].min() - 1, self.X[:, 0].max() + 1
         y_min, y_max = self.X[:, 1].min() - 1, self.X[:, 1].max() + 1
 
-        self.step = 0
         self.max_steps = max_steps
         self.message_div = Div(text="", width=400, height=50)
 
@@ -43,9 +42,10 @@ class EvolvingBoundaryVisualizer:
         self.plot.multi_line(xs="prev_xs", ys="prev_ys", source=self.boundary_source, line_width=2, color="grey")
         self.plot.multi_line(xs="xs", ys="ys", source=self.boundary_source, line_width=2, color="black")
 
-        self.step_slider = Slider(start=0, end=self.max_steps, value=0, step=1, title="Epoch Step")
+        self.step_slider = Slider(start=0, end=self.max_steps, value=0, step=1, title="Step")
         self.play_pause_button = Button(label="Play")
         self.reset_button = Button(label="Reset", button_type="danger")
+        self.clear_button = Button(label="Clear", button_type="warning")  # Add Clear button
 
         self.tracker_colors = ["#d55e00", "#cc79a7", "#0072b2", "#f0e442", "#009e73"]
         self.tracker_colors_hex = [matplotlib.colors.rgb2hex(c) for c in self.tracker_colors]  # Store as hex
@@ -142,11 +142,24 @@ class EvolvingBoundaryVisualizer:
             slider.value = 0;
         """))
 
+        # Clear button JS callback
+        self.clear_button.js_on_click(CustomJS(args={"source": self.source, "colors": self.colors}, code="""
+            var new_data = source.data;
+            for (var idx = 0; idx < new_data["color"].length; idx++) {
+                var class_idx = new_data["class"][idx];
+                new_data["color"][idx] = colors[class_idx];  // Reset to original color based on class
+                new_data["alpha"][idx] = 1.0;
+                new_data["size"][idx] = 6;  // Reset size
+            }
+            source.selected.indices = [];  // Clear selection
+            source.change.emit();
+        """))
+
     def get_layout(self):
         return column(
             self.plot,
             self.message_div,
-            row(self.play_pause_button, self.reset_button),
+            row(self.play_pause_button, self.reset_button, self.clear_button),  # Include the clear button
             self.step_slider,
             row(Div(text="Tracker Colors:"), *self.tracker_buttons)
         )
