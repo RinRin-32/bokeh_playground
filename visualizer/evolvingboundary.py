@@ -3,6 +3,7 @@ from bokeh.layouts import column, row
 from bokeh.models import ColumnDataSource, Button, Slider, Div, CustomJS
 from bokeh.io import curdoc
 import numpy as np
+import matplotlib
 
 class EvolvingBoundaryVisualizer:
     def __init__(self, shared_source, shared_resource, mod1, steps, colors, batches=4, max_steps=30):
@@ -46,6 +47,48 @@ class EvolvingBoundaryVisualizer:
         self.step_slider = Slider(start=0, end=self.max_steps, value=0, step=1, title="Epoch Step")
         self.play_pause_button = Button(label="Play")
         self.reset_button = Button(label="Reset", button_type="danger")
+
+        self.tracker_colors = ["#d55e00", "#cc79a7", "#0072b2", "#f0e442", "#009e73"]
+        self.tracker_colors_hex = [matplotlib.colors.rgb2hex(c) for c in self.tracker_colors]  # Store as hex
+
+        # Creating individual buttons for color selection
+        self.tracker_buttons = []
+        tracker_buttons = []
+        for i, color in enumerate(self.tracker_colors_hex):
+            # Dynamically create the style for each button
+
+            style_btn = f""".bk-btn {{
+                color: {color};
+                background-color: {color};
+            }}
+            """
+            
+            button = Button(label=f"", width=50, height=50, stylesheets=[style_btn], css_classes=[f'color-button-{i}'])
+
+            # JS callback for applying the color
+            button_callback = CustomJS(args={"source": self.source, "color": color, "all_color": self.tracker_colors}, code="""
+                var selected_indices = source.selected.indices;
+                if (selected_indices.length == 0) {
+                    alert("No points selected to apply color.");
+                    return;
+                }
+
+                var new_data = source.data;
+                for (var idx = 0; idx < new_data["color"].length; idx++) {
+                    if (selected_indices.includes(idx)) {
+                        new_data["color"][idx] = color;
+                        new_data["alpha"][idx] = 1.0;
+                        new_data["size"][idx] = 10;
+                    } else if (new_data["color"][idx] != "grey" && new_data["color"][idx] != color && !all_color.includes(new_data["color"][idx])) {
+                        new_data["color"][idx] = "grey";
+                        new_data["alpha"][idx] = 0.2;
+                    }
+                }
+                source.change.emit();
+            """)
+
+            button.js_on_click(button_callback)
+            self.tracker_buttons.append(button)
 
         self.setup_callbacks()
 
@@ -102,5 +145,6 @@ class EvolvingBoundaryVisualizer:
             self.plot,
             self.message_div,
             row(self.play_pause_button, self.reset_button),
-            self.step_slider
+            self.step_slider,
+            row(Div(text="Tracker Colors:"), *self.tracker_buttons)
         )
