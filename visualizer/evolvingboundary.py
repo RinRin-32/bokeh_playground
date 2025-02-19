@@ -51,13 +51,27 @@ class EvolvingBoundaryVisualizer:
         self.tracker_colors = ["#d55e00", "#cc79a7", "#0072b2", "#f0e442", "#009e73"]
         self.tracker_colors_hex = [matplotlib.colors.rgb2hex(c) for c in self.tracker_colors]  # Store as hex
 
+        # Forward/Backward buttons for step
+        self.forward_step_button = Button(label="Forward Step", width=150, button_type="success")
+        self.backward_step_button = Button(label="Backward Step", width=150, button_type="warning")
+
+        # Forward/Backward buttons for epoch
+        self.forward_epoch_button = Button(label="Forward Epoch", width=150, button_type="success")
+        self.backward_epoch_button = Button(label="Backward Epoch", width=150, button_type="warning")
+
         # Tracker buttons setup
         self.tracker_buttons = []
         for i, color in enumerate(self.tracker_colors_hex):
-            style_btn = f""".bk-btn {{
+            style_btn = f"""
+            .bk-btn {{
                 color: {color};
                 background-color: {color};
-            }}"""
+            }}
+            .bk-btn:hover {{
+                background-color: {color};
+                opacity: 0.8; /* Optional: Adds a slight transparency effect on hover */
+            }}
+            """
             
             button = Button(label=f"", width=50, height=50, stylesheets=[style_btn], css_classes=[f'color-button-{i}'])
             button_callback = CustomJS(args={"source": self.source, "color": color, "all_color": self.tracker_colors}, code="""
@@ -89,6 +103,7 @@ class EvolvingBoundaryVisualizer:
         self.setup_callbacks()
 
     def setup_callbacks(self):
+        # Existing step slider callback
         self.step_slider.js_on_change("value", CustomJS(args={"source": self.source, 
                                                             "shared_resource": self.shared_resource,
                                                             "boundary_source": self.boundary_source,
@@ -162,11 +177,41 @@ class EvolvingBoundaryVisualizer:
             source.change.emit();
         """))
 
+        self.forward_step_button.js_on_click(CustomJS(args={"slider": self.step_slider}, code="""
+            var step = slider.value;
+            if (step < slider.end) {
+                slider.value = step + 1;
+            }
+        """))
+
+        self.backward_step_button.js_on_click(CustomJS(args={"slider": self.step_slider}, code="""
+            var step = slider.value;
+            if (step > slider.start) {
+                slider.value = step - 1;
+            }
+        """))
+
+        self.forward_epoch_button.js_on_click(CustomJS(args={"slider": self.step_slider}, code="""
+            var step = slider.value;
+            if (step + 4 <= slider.end) {
+                slider.value = step + 4;
+            }
+        """))
+
+        self.backward_epoch_button.js_on_click(CustomJS(args={"slider": self.step_slider}, code="""
+            var step = slider.value;
+            if (step - 4 >= slider.start) {
+                slider.value = step - 4;
+            }
+        """))
+
     def get_layout(self):
         return column(
             self.plot,
             self.message_div,
-            row(self.play_pause_button, self.reset_button, self.clear_button),  # Include the clear button
+            row(self.play_pause_button, self.reset_button, self.clear_button),
             row(self.epoch_div, self.step_slider),
+            row(self.backward_step_button, self.forward_step_button),
+            row(self.backward_epoch_button, self.forward_epoch_button),
             row(Div(text="Tracker Colors:"), *self.tracker_buttons)
         )
