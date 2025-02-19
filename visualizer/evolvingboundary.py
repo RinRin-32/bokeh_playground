@@ -23,6 +23,7 @@ class EvolvingBoundaryVisualizer:
 
         self.max_steps = max_steps
         self.message_div = Div(text="", width=400, height=50)
+        self.epoch_div = Div(text=f"Epoch: 0", width=60, height=20)  # New Div to display Epoch
 
         self.plot = figure(
             title="Evolving Boundary Visualization",
@@ -90,7 +91,9 @@ class EvolvingBoundaryVisualizer:
     def setup_callbacks(self):
         self.step_slider.js_on_change("value", CustomJS(args={"source": self.source, 
                                                             "shared_resource": self.shared_resource,
-                                                            "boundary_source": self.boundary_source}, 
+                                                            "boundary_source": self.boundary_source,
+                                                            "epoch_div": self.epoch_div,  # Pass the epoch Div
+                                                            "batches": self.batches}, 
         code="""
             var step = cb_obj.value;
             var shared_data = shared_resource.data;
@@ -114,6 +117,10 @@ class EvolvingBoundaryVisualizer:
 
                 source.change.emit();
                 boundary_source.change.emit();
+
+                // Update the epoch display
+                var epoch = Math.floor(step / batches);
+                epoch_div.text = "Epoch: " + epoch;
             }
         """))
 
@@ -160,6 +167,6 @@ class EvolvingBoundaryVisualizer:
             self.plot,
             self.message_div,
             row(self.play_pause_button, self.reset_button, self.clear_button),  # Include the clear button
-            self.step_slider,
+            row(self.epoch_div, self.step_slider),
             row(Div(text="Tracker Colors:"), *self.tracker_buttons)
         )
