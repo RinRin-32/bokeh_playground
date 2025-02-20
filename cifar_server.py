@@ -1,22 +1,15 @@
-import h5py
-from bokeh.plotting import curdoc
-from visualizer.evolvingboundary import EvolvingBoundaryVisualizer
-from visualizer.evolvingmpe import EvolvingMemoryMapVisualizer
-from visualizer.evolvingsensitivity import EvolvingSensitivityVisualizer
+from bokeh.plotting import curdoc, output_file, save
 from bokeh.models import ColumnDataSource
 from bokeh.layouts import column, row
-import json
-import sys
 import argparse
-import os
 import numpy as np
-from PIL import Image, ImageEnhance, ImageOps
-import matplotlib.cm as cm
+from PIL import Image
 from io import BytesIO
 import base64
 from visualizer.labelnoise import LabelNoisePlot
-import sys
 import torch
+import sys
+import os
 
 sys.path.append("../memory-perturbation")
 
@@ -27,11 +20,17 @@ CIFAR10_CLASSES = [
     "dog", "frog", "horse", "ship", "truck"
 ]
 
-
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Launch the Bokeh server with an HDF5 file.")
 parser.add_argument("--file", type=str, required=True, help="Path to the HDF5 file")
+parser.add_argument("--compress", type=bool, default=True, help="Random sampling of images, does so by default")
+parser.add_argument("--n_sample", type=int, default=1000, help="Number of images selected for plot if compressing, 1000 by default")
+parser.add_argument("--output", type=str, required=False, help="If specified filename, while running on python not bokeh serve, the html will be saved in current directory")
 args = parser.parse_args()
+
+if args.output is not None:
+    os.makedirs('./output', exist_ok=True)
+    output_file(filename=f"./output/{args.output}.html", title="Static HTML file", mode="inline")
 
 
 data = np.load(args.file)
@@ -69,15 +68,41 @@ def image_to_base64(image_array):
     img.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
-# Convert all images in sorted order
-image_base64_list = [image_to_base64(images[i]) for i in index]
+if args.compress:
+    # Set sample size
+    sample_size = min(args.n_sample, len(sort_noises))  # Adjust based on visualization needs
+
+    # Randomly sample from the sorted indices (to keep sorting intact)
+    sample_indices = np.random.choice(len(sort_noises), sample_size, replace=False)
+
+    # Extract sampled data while keeping indexing consistent
+    sample_noises = sort_noises[sample_indices]
+    sample_cifar_indices = index[sample_indices]  # Original CIFAR-10 indices
+    sample_labels = labels[sample_indices]
+    sample_images = images[sample_cifar_indices]  # Extract corresponding CIFAR images
+
+    # Sort sampled data by noise values (descending order for visualization)
+    sorted_data = sorted(zip(sample_noises, sample_cifar_indices, sample_labels, sample_images), 
+                        key=lambda x: x[0], reverse=True)
+
+    # Unpack sorted data
+    sorted_noises, sorted_cifar_indices, sorted_labels, sorted_images = zip(*sorted_data)
+
+    sort_noises = np.array(sorted_noises)
+    labels = np.array(sorted_labels)
+
+
+    image_base64_list = [image_to_base64(img) for img in sorted_images]
+else:
+    image_base64_list = [image_to_base64(images[i]) for i in index]
 
 # Prepare Data for Bokeh
 source = ColumnDataSource(data=dict(
     x=list(range(len(sort_noises))),
     y=sort_noises,
     label=labels.astype(str),  # Convert labels to string for tooltip
-    img=image_base64_list  # Add base64 images
+    img=image_base64_list,  # Add base64 images
+    color= ['grey'] * len(sorted_noises)
 ))
 
 labelnoise = LabelNoisePlot(source)
@@ -87,3 +112,6 @@ labelnoise_layout = column(labelnoise.get_layout(), width=800, height=600)
 layout = row(labelnoise_layout)
 
 curdoc().add_root(layout)
+
+if args.output is not None:
+    save(layout)
