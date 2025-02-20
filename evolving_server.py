@@ -13,12 +13,12 @@ from skimage import measure
 from bokeh.plotting import output_file, save
 
 def extract_boundary_lines(xx, yy, zz):
-        contours = measure.find_contours(zz, level=0.5)  # Assuming boundary at 0.5 probability
-        xs, ys = [], []
-        for contour in contours:
-            xs.append(xx[0, 0] + contour[:, 1] * (xx[0, -1] - xx[0, 0]) / zz.shape[1])
-            ys.append(yy[0, 0] + contour[:, 0] * (yy[-1, 0] - yy[0, 0]) / zz.shape[0])
-        return xs, ys
+    contours = measure.find_contours(zz, level=0.5)  # Assuming boundary at 0.5 probability
+    xs, ys = [], []
+    for contour in contours:
+        xs.append(xx[0, 0] + contour[:, 1] * (xx[0, -1] - xx[0, 0]) / zz.shape[1])
+        ys.append(yy[0, 0] + contour[:, 0] * (yy[-1, 0] - yy[0, 0]) / zz.shape[0])
+    return xs, ys
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Launch the Bokeh server with an HDF5 file.")
