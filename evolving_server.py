@@ -10,6 +10,7 @@ import sys
 import argparse
 import os
 from skimage import measure
+from bokeh.plotting import output_file, save
 
 def extract_boundary_lines(xx, yy, zz):
         contours = measure.find_contours(zz, level=0.5)  # Assuming boundary at 0.5 probability
@@ -22,6 +23,7 @@ def extract_boundary_lines(xx, yy, zz):
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Launch the Bokeh server with an HDF5 file.")
 parser.add_argument("--file", type=str, required=True, help="Path to the HDF5 file")
+parser.add_argument("--output", type=str, required=False, help="If specified filename, while running on python not bokeh serve, the html will be saved in ./output")
 args = parser.parse_args()
 
 # Load the HDF5 file
@@ -37,6 +39,10 @@ if not h5_file.lower().endswith(".h5"):
 if not os.path.isfile(h5_file):
     print(f"Error: The file '{h5_file}' does not exist.")
     sys.exit(1)
+
+if args.output is not None:
+    os.makedirs('./output', exist_ok=True)
+    output_file(filename=f"./output/{args.output}.html", title="Static HTML file", mode="inline")
 
 with h5py.File(h5_file, "r") as f:
     # Read config (if needed for any parameters, e.g., max_steps)
@@ -85,9 +91,6 @@ for step in range(total_steps):
 
 shared_resource = ColumnDataSource(data={
     "step": list(range(total_steps)),
-    "xx": xx,
-    "yy": yy,
-    "Z": Z,
     "bpe": bpe_scores,
     "bls": bls_scores,
     "sensitivities": sensitivity_scores,
@@ -132,3 +135,6 @@ sensitivity_layout = column(sensitivityvisualizer.get_layout(), width=450)
 layout = row(boundary_layout, memory_layout, sensitivity_layout)
 
 curdoc().add_root(layout)
+
+if args.output is not None:
+    save(layout)

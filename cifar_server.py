@@ -15,6 +15,22 @@ sys.path.append("../memory-perturbation")
 
 from lib.datasets import get_dataset
 
+def image_to_base64(image_array):
+    # Ensure image is (H, W, 3)
+    if image_array.shape[0] == 3:  # (3, 32, 32) → (32, 32, 3)
+        image_array = image_array.transpose(1, 2, 0)
+    
+    # Normalize to [0, 255] and convert to uint8
+    image_array = ((image_array - image_array.min()) / (image_array.max() - image_array.min()) * 255).astype(np.uint8)
+    
+    # Convert NumPy array to PIL Image
+    img = Image.fromarray(image_array)  # Now it correctly handles RGB
+    
+    # Encode to base64
+    buffered = BytesIO()
+    img.save(buffered, format="PNG")
+    return base64.b64encode(buffered.getvalue()).decode("utf-8")
+
 CIFAR10_CLASSES = [
     "airplane", "automobile", "bird", "cat", "deer",
     "dog", "frog", "horse", "ship", "truck"
@@ -25,7 +41,7 @@ parser = argparse.ArgumentParser(description="Launch the Bokeh server with an np
 parser.add_argument("--file", type=str, required=True, help="Path to the npz file")
 parser.add_argument("--compress", type=bool, default=True, help="Random sampling of images, does so by default")
 parser.add_argument("--n_sample", type=int, default=1000, help="Number of images selected for plot if compressing, 1000 by default")
-parser.add_argument("--output", type=str, required=False, help="If specified filename, while running on python not bokeh serve, the html will be saved in current directory")
+parser.add_argument("--output", type=str, required=False, help="If specified filename, while running on python not bokeh serve, the html will be saved under ./output")
 args = parser.parse_args()
 
 if args.output is not None:
@@ -56,22 +72,6 @@ sort_noises = np.array(sort_noises)
 index = np.array(index)
 labels = np.array(labels)
 
-def image_to_base64(image_array):
-    # Ensure image is (H, W, 3)
-    if image_array.shape[0] == 3:  # (3, 32, 32) → (32, 32, 3)
-        image_array = image_array.transpose(1, 2, 0)
-    
-    # Normalize to [0, 255] and convert to uint8
-    image_array = ((image_array - image_array.min()) / (image_array.max() - image_array.min()) * 255).astype(np.uint8)
-    
-    # Convert NumPy array to PIL Image
-    img = Image.fromarray(image_array)  # Now it correctly handles RGB
-    
-    # Encode to base64
-    buffered = BytesIO()
-    img.save(buffered, format="PNG")
-    return base64.b64encode(buffered.getvalue()).decode("utf-8")
-
 if args.compress:
     # Set sample size
     sample_size = min(args.n_sample, len(sort_noises))  # Adjust based on visualization needs
@@ -97,6 +97,7 @@ if args.compress:
 
 
     image_base64_list = [image_to_base64(img) for img in sorted_images]
+    
 else:
     image_base64_list = [image_to_base64(images[i]) for i in index]
 
