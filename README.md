@@ -81,10 +81,45 @@ Content of the 'config' group:
 
 insert video here
 
+```
+usage: mpe_server.py [-h] --file FILE
+
+Launch the Bokeh server with an HDF5 file, this plot displays realtime how decision boundary changes with point perturbation alongside Memory Maps and Sensitivity plot.
+
+options:
+  -h, --help   show this help message and exit
+  --file FILE  Path to the HDF5 file
+```
+
 ```evolving_server.py``` is a interactive animation to visualize the behavior of model during training. All the data used here are calculated and store in h5 file so this visual isn't a real time rendering like the previous mpe_server with real time decision boundary calculations. Per steps trained, this interactive plot displays the changes in model sensitivitiy to data points as well as the changes in Memory Maps. For this plot, user get to select areas of interest and highlight in their desired color for ease of visualization.
 
 insert video here
 
 ```
-bokeh serve --show <server of choice> --args --file <path/to/your/experiment>.h5
+usage: evolving_server.py [-h] --file FILE [--output OUTPUT]
+
+Launch the Bokeh server with an HDF5 file, this plot is to display changes in model behavior over training step.
+
+options:
+  -h, --help       show this help message and exit
+  --file FILE      Path to the HDF5 file
+  --output OUTPUT  If specified filename, while running on python not bokeh serve, the html will be saved in ./output
+```
+
+```cifar_server.py``` is an interactive plot of label smoothing on CIFAR10. The plot provides the ability to highlight plots and display images at at certain point.
+
+insert video here
+
+```
+usage: cifar_server.py [-h] --file FILE [--compress] [--no-compress] [--n_sample N_SAMPLE] [--output OUTPUT]
+
+Launch a Bokeh server with an npz file, this plots label smoothing on CIFAR10.
+
+options:
+  -h, --help           show this help message and exit
+  --file FILE          Path to the npz file
+  --compress           Enable random sampling of images
+  --no-compress        Disable random sampling of images
+  --n_sample N_SAMPLE  Number of images selected for plot if compressing, 1000 by default
+  --output OUTPUT      If specified filename, while running on python not bokeh serve, the html will be saved under ./output
 ```

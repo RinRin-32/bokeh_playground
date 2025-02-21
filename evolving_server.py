@@ -21,7 +21,7 @@ def extract_boundary_lines(xx, yy, zz):
     return xs, ys
 
 # Parse command-line arguments
-parser = argparse.ArgumentParser(description="Launch the Bokeh server with an HDF5 file.")
+parser = argparse.ArgumentParser(description="Launch the Bokeh server with an HDF5 file, this plot is to display changes in model behavior over training step.")
 parser.add_argument("--file", type=str, required=True, help="Path to the HDF5 file")
 parser.add_argument("--output", type=str, required=False, help="If specified filename, while running on python not bokeh serve, the html will be saved in ./output")
 args = parser.parse_args()

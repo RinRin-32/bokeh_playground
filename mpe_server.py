@@ -17,7 +17,7 @@ import os
 
 
 # Parse command-line arguments
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(description="Launch the Bokeh server with an HDF5 file, this plot displays realtime how decision boundary changes with point perturbation alongside Memory Maps and Sensitivity plot.")
 parser.add_argument("--file", type=str, required=True, help="Path to the HDF5 file")
 args = parser.parse_args()
 

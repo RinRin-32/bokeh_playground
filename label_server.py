@@ -47,7 +47,7 @@ def cifar10_to_base64(image_array):
     return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
 # Parse command-line arguments
-parser = argparse.ArgumentParser(description="Launch the Bokeh server with an HDF5 file.")
+parser = argparse.ArgumentParser(description="Launch the Bokeh server displaying Label Smoothing plot with an HDF5 file.")
 parser.add_argument("--file", type=str, required=True, help="Path to the HDF5 file")
 parser.add_argument("--memory_map", action="store_true", help="Enable memory map")
 parser.add_argument("--no-memory_map", dest="memory_map", action="store_false", help="Disable memory map")

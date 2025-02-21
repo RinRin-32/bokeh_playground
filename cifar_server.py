@@ -37,7 +37,7 @@ CIFAR10_CLASSES = [
 ]
 
 # Parse command-line arguments
-parser = argparse.ArgumentParser(description="Launch the Bokeh server with an npz file.")
+parser = argparse.ArgumentParser(description="Launch a Bokeh server with an npz file, this plots label smoothing on CIFAR10.")
 parser.add_argument("--file", type=str, required=True, help="Path to the npz file")
 parser.add_argument("--compress", action="store_true", help="Enable random sampling of images")
 parser.add_argument("--no-compress", dest="compress", action="store_false", help="Disable random sampling of images")
