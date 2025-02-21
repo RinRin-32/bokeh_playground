@@ -102,7 +102,7 @@ if args.compress:
     sample_noises = sort_noises[sample_indices]
     sample_data_indices = index[sample_indices]
     sample_labels = labels[sample_indices]
-    sample_images = images[sample_indices]
+    sample_images = images[sample_data_indices]
     sample_bpe = bpe[sample_indices]
     sample_bls = bls[sample_indices]
 
