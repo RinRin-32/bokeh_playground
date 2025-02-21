@@ -1,6 +1,5 @@
 from bokeh.models import Button, CustomJS, Slider, ColumnDataSource, Div
 from bokeh.layouts import column, row
-from bokeh.io import curdoc
 import numpy as np
 import matplotlib
 from bokeh.plotting import figure

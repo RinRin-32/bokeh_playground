@@ -1,8 +1,5 @@
 import h5py
 from bokeh.plotting import curdoc, output_file, save
-from visualizer.evolvingboundary import EvolvingBoundaryVisualizer
-from visualizer.evolvingmpe import EvolvingMemoryMapVisualizer
-from visualizer.evolvingsensitivity import EvolvingSensitivityVisualizer
 from bokeh.models import ColumnDataSource
 from bokeh.layouts import column, row
 import json
@@ -10,7 +7,7 @@ import sys
 import argparse
 import os
 import numpy as np
-from PIL import Image, ImageEnhance, ImageOps
+from PIL import Image
 import matplotlib.cm as cm
 from io import BytesIO
 import base64

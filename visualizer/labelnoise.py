@@ -1,6 +1,6 @@
 from bokeh.plotting import figure
 from bokeh.layouts import column, row
-from bokeh.models import HoverTool, ColumnDataSource, Div, CustomJS, Select, Button
+from bokeh.models import HoverTool, ColumnDataSource, Div, CustomJS, Select
 from visualizer.evolvingmpe import EvolvingMemoryMapVisualizer
 
 class LabelNoisePlot:
