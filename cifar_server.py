@@ -39,7 +39,8 @@ CIFAR10_CLASSES = [
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Launch the Bokeh server with an npz file.")
 parser.add_argument("--file", type=str, required=True, help="Path to the npz file")
-parser.add_argument("--compress", type=bool, default=True, help="Random sampling of images, does so by default")
+parser.add_argument("--compress", action="store_true", help="Enable random sampling of images")
+parser.add_argument("--no-compress", dest="compress", action="store_false", help="Disable random sampling of images")
 parser.add_argument("--n_sample", type=int, default=1000, help="Number of images selected for plot if compressing, 1000 by default")
 parser.add_argument("--output", type=str, required=False, help="If specified filename, while running on python not bokeh serve, the html will be saved under ./output")
 args = parser.parse_args()
