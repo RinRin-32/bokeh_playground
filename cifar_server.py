@@ -111,7 +111,7 @@ source = ColumnDataSource(data=dict(
     color= ['grey'] * len(sorted_noises)
 ))
 
-labelnoise = LabelNoisePlot(source)
+labelnoise = LabelNoisePlot(source, 'CIFAR-10')
 
 labelnoise_layout = column(labelnoise.get_layout(), width=800, height=600)
 

@@ -4,9 +4,10 @@ from bokeh.models import HoverTool, ColumnDataSource, Div, CustomJS, Select
 from visualizer.evolvingmpe import EvolvingMemoryMapVisualizer
 
 class LabelNoisePlot:
-    def __init__(self, shared_source, show_mm=False):
+    def __init__(self, shared_source, plot_name, show_mm=False):
         self.shared_source = shared_source
         self.show_mm = show_mm
+        self.plot_name = plot_name
         
         self.unique_labels = list(set(shared_source.data['label']))
         self.unique_labels.sort()
@@ -96,8 +97,10 @@ class LabelNoisePlot:
 
     def create_plot(self):
         p = figure(width=800, height=600, tools="reset,save,box_select",
-           title="Label Noise Distribution",
+           title=f"{self.plot_name} Label Noise Distribution",
            x_axis_label="Examples", y_axis_label=r"Label Noise ||ε||₂")
+        p.title.text_font_size = "25px"
+        p.title.align = 'center'
         p.xaxis.visible = False
         p.yaxis.major_label_text_font_size = "15pt"
         p.yaxis.axis_label_text_font_size = "20pt"

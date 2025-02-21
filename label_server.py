@@ -149,7 +149,7 @@ else:
         "color": ['grey'] * len(sort_noises)
     })
     
-labelnoise = LabelNoisePlot(source, args.memory_map)
+labelnoise = LabelNoisePlot(source, dataset, args.memory_map)
 
 labelnoise_layout = column(labelnoise.get_layout(), width=800, height=600)
 
