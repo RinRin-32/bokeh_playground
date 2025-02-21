@@ -53,6 +53,8 @@ def cifar10_to_base64(image_array):
 parser = argparse.ArgumentParser(description="Launch the Bokeh server with an HDF5 file.")
 parser.add_argument("--file", type=str, required=True, help="Path to the HDF5 file")
 parser.add_argument("--memory_map", type=bool, default=False, help="if True display memory map too")
+parser.add_argument("--compress", type=bool, default=True, help="Random sampling of images, does so by default")
+parser.add_argument("--n_sample", type=int, default=1000, help="Number of images selected for plot if compressing, 1000 by default")
 parser.add_argument("--output", type=str, required=False, help="If specified filename, while running on python not bokeh serve, the html will be saved under ./output")
 args = parser.parse_args()
 
@@ -94,11 +96,36 @@ labels = np.array(labels)
 bpe = np.array(bpe)
 bls = np.array(bls)
 
+if args.compress:
+    sample_size = min(args.n_sample, len(sort_noises))
+    sample_indices = np.random.choice(len(sort_noises), sample_size, replace=False)
+
+    sample_noises = sort_noises[sample_indices]
+    sample_data_indices = index[sample_indices]
+    sample_labels = labels[sample_indices]
+    sample_images = images[sample_indices]
+    sample_bpe = bpe[sample_indices]
+    sample_bls = bls[sample_indices]
+
+    sorted_data = sorted(zip(sample_noises, sample_data_indices, sample_labels, sample_images, sample_bpe, sample_bls),
+                         key=lambda x: x[0], reverse=True)
+    
+    sorted_noises, sorted_data_indices, sorted_labels, sorted_images, sorted_bpe, sorted_bls = zip(*sorted_data)
+
+    sort_noises = np.array(sorted_noises)
+    labels = np.array(sorted_labels)
+    bpe = np.array(sorted_bpe)
+    bls = np.array(sorted_bls)
+
+    images = np.array(sorted_images)
+
+
+
 # Convert all images in sorted order
 if dataset == 'MNIST':
-    image_base64_list = [mnist_to_base64(images[i]) for i in index]
+    image_base64_list = [mnist_to_base64(img) for img in images]
 elif dataset == 'CIFAR10':
-    image_base64_list = [cifar10_to_base64(images[i]) for i in index]
+    image_base64_list = [cifar10_to_base64(img) for img in images]
 
 # Prepare Data for Bokeh
 if args.memory_map:
