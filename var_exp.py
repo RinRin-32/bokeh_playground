@@ -10,6 +10,15 @@ import json
 import sys
 import argparse
 import os
+from skimage import measure
+
+def extract_boundary_lines(xx, yy, zz):
+    contours = measure.find_contours(zz, level=0.5)  # Assuming boundary at 0.5 probability
+    xs, ys = [], []
+    for contour in contours:
+        xs.append(xx[0, 0] + contour[:, 1] * (xx[0, -1] - xx[0, 0]) / zz.shape[1])
+        ys.append(yy[0, 0] + contour[:, 0] * (yy[-1, 0] - yy[0, 0]) / zz.shape[0])
+    return xs, ys
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Launch the Bokeh server with an HDF5 file.")
@@ -64,6 +73,18 @@ with h5py.File(h5_file, "r") as f:
 colors = ["blue", "green"]
 marker = ["circle", "square"]
 
+xs = []
+ys = []
+for step in range(total_steps):
+    xx_step = xx[step]
+    yy_step = yy[step]
+    zz_step = Z[step]
+    
+    # Extract boundary for each step
+    boundary_x, boundary_y = extract_boundary_lines(xx_step, yy_step, zz_step)
+    xs.append(boundary_x)
+    ys.append(boundary_y)
+
 # Prepare the shared sources
 shared_source = ColumnDataSource(data={
     "id": ids,
@@ -84,8 +105,8 @@ shared_source = ColumnDataSource(data={
 
 shared_resource = ColumnDataSource(data={
     "step": list(range(total_steps)),
-    "xx": xx,
-    "yy": yy,
+    "xs": xs,
+    "ys": ys,
     "Z": Z,
     "bpe": bpe_scores,
     "bls": bls_scores,
@@ -101,11 +122,11 @@ memorymapvisualizer = EvolvingMemoryMapVisualizer(shared_source, True)
 boundaryvisualizer = EvolvingBoundaryVisualizer(
     shared_source,
     shared_resource,
-    sensitivityvisualizer,
     log_step,
     colors,
     total_batch,
-    max_steps=total_steps - 1, lambda_var_plot=True
+    max_steps=total_steps - 1,
+    show_lambda=True
 )
 variancelambdaplot = VarianceLambdaPlot(shared_source)
 

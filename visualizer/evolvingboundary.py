@@ -5,13 +5,14 @@ import matplotlib
 from bokeh.plotting import figure
 
 class EvolvingBoundaryVisualizer:
-    def __init__(self, shared_source, shared_resource, steps, colors, batches=4, max_steps=30):
+    def __init__(self, shared_source, shared_resource, steps, colors, batches=4, max_steps=30, show_lambda=False):
         self.source = shared_source
         self.shared_resource = shared_resource
         self.batches = batches
         self.steps = steps
         self.colors = colors
         self.max_steps = max_steps
+        self.show_lambda = show_lambda
 
         self.X = np.column_stack([self.source.data[feature] for feature in self.source.data if feature in ['x', 'y']])
         self.y = self.source.data['class']
@@ -106,7 +107,7 @@ class EvolvingBoundaryVisualizer:
                                                             "shared_resource": self.shared_resource,
                                                             "boundary_source": self.boundary_source,
                                                             "epoch_div": self.epoch_div,  # Pass the epoch Div
-                                                            "batches": self.batches}, 
+                                                            "batches": self.batches, "condition": self.show_lambda}, 
         code="""
             var step = cb_obj.value;
             var shared_data = shared_resource.data;
@@ -118,6 +119,10 @@ class EvolvingBoundaryVisualizer:
                 source.data["sensitivities"] = shared_data["sensitivities"][step_index];
                 source.data["softmax_deviations"] = shared_data["softmax_deviations"][step_index];
 
+                if (condition) {
+                    source.data["average_marginal_vars"] = shared_data["average_marginal_vars"][step_index];
+                    source.data["average_lambda"] = shared_data["average_lambda"][step_index];
+                }
                 boundary_source.data["xs"] = shared_data["xs"][step_index];
                 boundary_source.data["ys"] = shared_data["ys"][step_index];
                 boundary_source.data["prev_xs"] = shared_data["xs"][step_index];
