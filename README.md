@@ -15,7 +15,7 @@ git clone https://github.com/RinRin-32/memory-perturbation/tree/memorymaps_exp
 ## Before you launch a Bokeh server
 Validate your h5 file with
 ```
-python ./validate.py --file <path to your h5 file> --project <mpe_server/evolving_server>
+python ./validate.py --file <path to your h5 file> --project <mpe_server/evolving_server/label_server>
 ```
 
 ### Expected response for correct h5 format for mpe_server
@@ -76,6 +76,36 @@ Content of the 'config' group:
 }
 ```
 
+### Expected response for correct h5 format for label_server
+```
+The HDF5 file './data/mnist_ivon_ls_exp.h5' is valid for the 'label_server' project.
+Structure of the HDF5 file './data/mnist_ivon_ls_exp.h5':
+Dataset: bls | Shape: (60000,) | Dtype: float32
+Dataset: bpe | Shape: (60000,) | Dtype: float32
+Group: config
+Dataset: config/config_data | Shape: () | Dtype: object
+Dataset: images | Shape: (60000, 1, 28, 28) | Dtype: float32
+Dataset: labels | Shape: (60000,) | Dtype: int64
+Dataset: noise | Shape: (60000,) | Dtype: float64
+
+Content of the 'config' group:
+{
+    "input_size": 784,
+    "nc": 10,
+    "model": "large_mlp",
+    "dataset": "MNIST",
+    "device": "cuda",
+    "optimizer": "iblr",
+    "optimizer_params": {
+        "lr": 2.0,
+        "delta": 60,
+        "hess_init": 0.9
+    },
+    "max_epochs": 30,
+    "loss_criterion": "CrossEntropyLoss"
+}
+```
+
 ## Serving your Bokeh server
 ```mpe_server.py``` plots the memory maps of each data points accompanied by a sensitivity plot. Since the graphs are interactive, ideally, users can interact and remove points to their likings and see how the model would train when said point is perturbed.
 
@@ -118,6 +148,24 @@ Launch a Bokeh server with an npz file, this plots label smoothing on CIFAR10.
 options:
   -h, --help           show this help message and exit
   --file FILE          Path to the npz file
+  --compress           Enable random sampling of images
+  --no-compress        Disable random sampling of images
+  --n_sample N_SAMPLE  Number of images selected for plot if compressing, 1000 by default
+  --output OUTPUT      If specified filename, while running on python not bokeh serve, the html will be saved under ./output
+```
+
+```label_server.py```, similar to ```cifar_server``` plots label smoothing, but more flexible to plot both MNIST and CIFAR10. Dataset used would be stored in the h5 file required to launch this server, therefore there is no need to specify the dataset in the parameter.
+
+```
+usage: label_server.py [-h] --file FILE [--memory_map] [--no-memory_map] [--compress] [--no-compress] [--n_sample N_SAMPLE] [--output OUTPUT]
+
+Launch the Bokeh server displaying Label Smoothing plot with an HDF5 file.
+
+options:
+  -h, --help           show this help message and exit
+  --file FILE          Path to the HDF5 file
+  --memory_map         Enable memory map
+  --no-memory_map      Disable memory map
   --compress           Enable random sampling of images
   --no-compress        Disable random sampling of images
   --n_sample N_SAMPLE  Number of images selected for plot if compressing, 1000 by default
