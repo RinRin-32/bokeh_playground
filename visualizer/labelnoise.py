@@ -2,6 +2,7 @@ from bokeh.plotting import figure
 from bokeh.layouts import column, row
 from bokeh.models import HoverTool, ColumnDataSource, Div, CustomJS, Select
 from visualizer.evolvingmpe import EvolvingMemoryMapVisualizer
+from collections import defaultdict
 
 class LabelNoisePlot:
     def __init__(self, shared_source, plot_name, show_mm=False):
@@ -27,25 +28,54 @@ class LabelNoisePlot:
             var labels = [];
             
             for (var i = 0; i < source.data['x'].length; i++) {
-                source.data['color'][i] = 'grey';  // Reset all to red
+                source.data['color'][i] = 'grey';  // Reset all to grey
             }
             
             for (var i = 0; i < selected_indices.length; i++) {
-                source.data['color'][selected_indices[i]] = 'red';  // Selected points become red
+                source.data['color'][selected_indices[i]] = 'red';  // Highlight selected points
                 imgs.push(source.data['img'][selected_indices[i]]);
                 labels.push(source.data['label'][selected_indices[i]]);
             }
             
             source.change.emit();
             
-            var html = "<div style='display: flex; flex-wrap: wrap; gap: 10px;'>";
+            // Group images by class
+            var grouped = {};
             for (var i = 0; i < imgs.length; i++) {
-                html += `<div><img src='data:image/png;base64,${imgs[i]}' width='56' height='56'><br>Label: ${labels[i]}</div>`;
+                var label = labels[i];
+                if (!(label in grouped)) {
+                    grouped[label] = [];
+                }
+                grouped[label].push(imgs[i]);
             }
+            
+            // Generate HTML with wrapping rows (max 10 images per row)
+            var html = "<div style='display: flex; flex-direction: column; gap: 10px;'>";
+            var sorted_labels = Object.keys(grouped).sort((a, b) => a - b); // Sort classes numerically
+
+            for (var j = 0; j < sorted_labels.length; j++) {
+                var label = sorted_labels[j];
+                var images = grouped[label];
+
+                html += `<div><b>Class ${label}</b></div>`;
+                html += "<div style='display: flex; flex-direction: column; gap: 5px;'>";
+
+                // Break images into lines of max 10 per row
+                for (var k = 0; k < images.length; k += 10) {
+                    html += "<div style='display: flex; flex-wrap: wrap; gap: 5px;'>";
+                    for (var m = k; m < Math.min(k + 10, images.length); m++) {
+                        html += `<img src='data:image/png;base64,${images[m]}' width='56' height='56'>`;
+                    }
+                    html += "</div>";  // Close row
+                }
+
+                html += "</div>";  // Close class container
+            }
+
             html += "</div>";
             display.text = html;
-        """
-        )
+        """)
+
         
         self.filtered_source.selected.js_on_change("indices", self.callback)
         self.mm_setup()
