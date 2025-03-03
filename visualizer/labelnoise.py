@@ -18,7 +18,12 @@ class LabelNoisePlot:
         self.plot = self.create_plot()
         self.selected_source = ColumnDataSource(data=dict(img=[], label=[]))
         
-        self.image_display = Div(text=self.generate_html([], []), width=300, height=600)
+        self.image_display = Div(
+            text="<h3>Selected Images:</h3>", 
+            width=500, height=600, 
+            stylesheets=[""" .scroll-box { overflow-y: auto; max-height: 600px; padding: 10px; } """], 
+            css_classes=["scroll-box"]
+        )
         
         self.dropdown = Select(title="Select Class:", value="All", options=self.unique_labels)
         
@@ -73,7 +78,7 @@ class LabelNoisePlot:
             }
 
             html += "</div>";
-            display.text = html;
+            display.text = '<div class="scroll-box">' + html + '</div>';
         """)
 
         

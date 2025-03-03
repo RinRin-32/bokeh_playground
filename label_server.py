@@ -93,6 +93,7 @@ index = np.array(index)
 labels = np.array(labels)
 bpe = np.array(bpe)
 bls = np.array(bls)
+images = np.array(images)
 
 if args.compress:
     sample_size = min(args.n_sample, len(sort_noises))
@@ -101,7 +102,7 @@ if args.compress:
     sample_noises = sort_noises[sample_indices]
     sample_data_indices = index[sample_indices]
     sample_labels = labels[sample_indices]
-    sample_images = images[sample_data_indices]
+    sample_images = images[sample_indices]
     sample_bpe = bpe[sample_indices]
     sample_bls = bls[sample_indices]
 
