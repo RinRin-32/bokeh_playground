@@ -1,4 +1,4 @@
-from bokeh.models import Button, CustomJS, Slider, ColumnDataSource, Div
+from bokeh.models import Button, CustomJS, Slider, ColumnDataSource, Div, HoverTool
 from bokeh.layouts import column, row
 import numpy as np
 import matplotlib
@@ -17,6 +17,8 @@ class ImageSensitivityVisualizer:
         self.play_pause_button = Button(label="Play")
         self.reset_button = Button(label="Reset", button_type="danger")
         self.clear_button = Button(label="Clear", button_type="warning")  # Add Clear button
+
+        self.image_display = Div(text="<h3>Selected Images:</h3>", width=300, height=600)
 
         self.tracker_colors = ["#d55e00", "#cc79a7", "#0072b2", "#f0e442", "#009e73"]
         self.tracker_colors_hex = [matplotlib.colors.rgb2hex(c) for c in self.tracker_colors]  # Store as hex
@@ -77,6 +79,16 @@ class ImageSensitivityVisualizer:
 
         p.x_range.only_visible = p.y_range.only_visible = True
 
+        hover = HoverTool(tooltips="""
+            <div>
+                <img src="data:image/png;base64,@img" width="28" height="28"></img>
+                <br>
+                <b>Label:</b> @label
+            </div>
+        """)
+
+        p.add_tools(hover)
+
         return p
     
     def setup_callbacks(self):
@@ -91,7 +103,6 @@ class ImageSensitivityVisualizer:
             if (step_index !== -1) {
                 source.data["bls"] = shared_data["bls"][step_index];
                 source.data["bpe"] = shared_data["bpe"][step_index];
-                source.data["sensitivities"] = shared_data["sensitivities"][step_index];
                 source.change.emit();
             }
         """))
@@ -132,9 +143,23 @@ class ImageSensitivityVisualizer:
             source.change.emit();
         """)) 
 
+        self.source.selected.js_on_change("indices", CustomJS(args={"source": self.source, "image_display": self.image_display}, code="""
+            var indices = source.selected.indices;
+            var images = source.data["img"];
+            var labels = source.data["label"];
+            
+            var html = "<h3>Selected Images:</h3>";
+            for (var i = 0; i < indices.length; i++) {
+                html += "<div style='display:inline-block; margin:5px; text-align:center;'>";
+                html += "<img src='data:image/png;base64," + images[indices[i]] + "' width='64' height='64'><br>";
+                html += "Label: " + labels[indices[i]] + "</div>";
+            }
+            image_display.text = html;
+        """))
+
     def get_layout(self):
         return column(
-            self.plot,
+            row(self.plot, self.image_display,),
             row(self.play_pause_button, self.reset_button, self.clear_button),
             row(self.step_slider),
             row(Div(text="Tracker Colors:"), *self.tracker_buttons)
