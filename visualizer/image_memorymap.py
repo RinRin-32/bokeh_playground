@@ -5,20 +5,21 @@ import matplotlib
 from bokeh.plotting import figure
 
 class ImageSensitivityVisualizer:
-    def __init__(self, shared_source, shared_resource, steps, colors, batches=4, max_steps=30):
+    def __init__(self, shared_source, shared_resource, max_epoch, default_color='blue'):
         self.source = shared_source
         self.shared_resource = shared_resource
-        self.batches = batches
-        self.steps = steps
-        self.colors = colors
-        self.max_steps = max_steps
+        self.max_epoch = max_epoch
+        self.default_color = default_color
 
         self.plot = self.create_plot()
 
-        self.step_slider = Slider(start=0, end=self.max_steps, value=0, step=1, title="Step")
+        self.step_slider = Slider(start=0, end=self.max_epoch, value=0, step=1, title="Epoch")
         self.play_pause_button = Button(label="Play")
         self.reset_button = Button(label="Reset", button_type="danger")
         self.clear_button = Button(label="Clear", button_type="warning")  # Add Clear button
+
+        self.tracker_colors = ["#d55e00", "#cc79a7", "#0072b2", "#f0e442", "#009e73"]
+        self.tracker_colors_hex = [matplotlib.colors.rgb2hex(c) for c in self.tracker_colors]  # Store as hex
 
         # Tracker buttons setup
         self.tracker_buttons = []
@@ -72,7 +73,7 @@ class ImageSensitivityVisualizer:
         p.xaxis.axis_label = 'Bayesian Leverage Score'
         p.yaxis.axis_label = 'Bayesian Prediction Error'
 
-        p.scatter(x='bls', y='bpe', color='color', marker='marker', alpha='alpha', size='size', source=self.shared_source)
+        p.scatter(x='bls', y='bpe', color='color', marker='marker', alpha='alpha', size='size', source=self.source)
 
         p.x_range.only_visible = p.y_range.only_visible = True
 
@@ -85,15 +86,14 @@ class ImageSensitivityVisualizer:
         code="""
             var step = cb_obj.value;
             var shared_data = shared_resource.data;
-            var step_index = shared_data["step"].indexOf(step);
+            var step_index = shared_data["epoch"].indexOf(step);
             
             if (step_index !== -1) {
                 source.data["bls"] = shared_data["bls"][step_index];
                 source.data["bpe"] = shared_data["bpe"][step_index];
                 source.data["sensitivities"] = shared_data["sensitivities"][step_index];
-                source.data["softmax_deviations"] = shared_data["softmax_deviations"][step_index];
-
                 source.change.emit();
+            }
         """))
 
         self.play_pause_button.js_on_click(CustomJS(args={"slider": self.step_slider, "button": self.play_pause_button},
@@ -121,11 +121,10 @@ class ImageSensitivityVisualizer:
             slider.value = 0;
         """))
 
-        self.clear_button.js_on_click(CustomJS(args={"source": self.source, "colors": self.colors}, code="""
+        self.clear_button.js_on_click(CustomJS(args={"source": self.source, "default_color": self.default_color}, code="""
             var new_data = source.data;
             for (var idx = 0; idx < new_data["color"].length; idx++) {
-                var class_idx = new_data["class"][idx];
-                new_data["color"][idx] = colors[class_idx];  // Reset to original color based on class
+                new_data["color"][idx] = default_color
                 new_data["alpha"][idx] = 1.0;
                 new_data["size"][idx] = 6;  // Reset size
             }
