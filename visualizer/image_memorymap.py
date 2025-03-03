@@ -18,7 +18,12 @@ class ImageSensitivityVisualizer:
         self.reset_button = Button(label="Reset", button_type="danger")
         self.clear_button = Button(label="Clear", button_type="warning")  # Add Clear button
 
-        self.image_display = Div(text="<h3>Selected Images:</h3>", width=300, height=600)
+        self.image_display = Div(
+            text="<h3>Selected Images:</h3>", 
+            width=300, height=600, 
+            stylesheets=[""" .scroll-box { overflow-y: auto; max-height: 600px; padding: 10px; } """], 
+            css_classes=["scroll-box"]
+        )
 
         self.tracker_colors = ["#d55e00", "#cc79a7", "#0072b2", "#f0e442", "#009e73"]
         self.tracker_colors_hex = [matplotlib.colors.rgb2hex(c) for c in self.tracker_colors]  # Store as hex
@@ -154,7 +159,7 @@ class ImageSensitivityVisualizer:
                 html += "<img src='data:image/png;base64," + images[indices[i]] + "' width='64' height='64'><br>";
                 html += "Label: " + labels[indices[i]] + "</div>";
             }
-            image_display.text = html;
+            image_display.text = '<div class="scroll-box">' + html + '</div>';
         """))
 
     def get_layout(self):

@@ -48,8 +48,6 @@ def cifar10_to_base64(image_array):
 
 parser = argparse.ArgumentParser(description="Launch the Bokeh server displaying Label Smoothing plot with an HDF5 file.")
 parser.add_argument("--file", type=str, required=True, help="Path to the HDF5 file")
-parser.add_argument("--memory_map", action="store_true", help="Enable memory map")
-parser.add_argument("--no-memory_map", dest="memory_map", action="store_false", help="Disable memory map")
 parser.add_argument("--compress", action="store_true", help="Enable random sampling of images")
 parser.add_argument("--no-compress", dest="compress", action="store_false", help="Disable random sampling of images")
 parser.add_argument("--n_sample", type=int, default=1000, help="Number of images selected for plot if compressing, 1000 by default")
@@ -90,6 +88,23 @@ with h5py.File(h5_file, "r") as f:
     test_nll = [f[f"results/epoch_{epoch}"]["test_nll"][()] for epoch in range(max_epoch)]
     estimated_nll = [f[f"results/epoch_{epoch}"]["estimated_nll"][()] for epoch in range(max_epoch)]
 
+
+if args.compress:
+    sample_size = min(args.n_sample, len(labels))
+    sample_indices = np.random.choice(len(labels), sample_size, replace=False)
+
+    sample_bpe = [np.array(epoch_scores)[sample_indices] for epoch_scores in bpe_scores]
+    sample_bls = [np.array(epoch_scores)[sample_indices] for epoch_scores in bls_scores]
+
+    sample_labels = labels[sample_indices]
+    sample_images = images[sample_indices]
+
+    bpe_scores = sample_bpe
+    bls_scores = sample_bls
+    labels = sample_labels
+    images = sample_images
+    
+
 # Convert all images in sorted order
 if dataset == 'MNIST':
     image_base64_list = [mnist_to_base64(img) for img in images]
@@ -97,16 +112,15 @@ elif dataset == 'CIFAR10':
     image_base64_list = [cifar10_to_base64(img) for img in images]
 
 epoch_orders = [np.argsort(noise) for noise in all_epoch_noises]
-print(epoch_orders)
 
 
 shared_resource = ColumnDataSource(data={
     "bpe": bpe_scores,
     "bls": bls_scores,
-    "sensitivities": sentivities,
+    #"sensitivities": sentivities,
     "epoch": list(range(max_epoch)),
-    "noises": all_epoch_noises,
-    "order": epoch_orders
+    #"noises": all_epoch_noises,
+    #"order": epoch_orders
 })
 
 shared_source = ColumnDataSource(data={
@@ -114,13 +128,13 @@ shared_source = ColumnDataSource(data={
     "label": labels,
     "bpe": bpe_scores[0],
     "bls": bls_scores[0],
-    "sensitivities": sentivities[0],
+    #"sensitivities": sentivities[0],
     "size": [6] * len(labels),
     "alpha": [1.0] * len(labels),
     "color": ['blue'] * len(labels),
     "marker": ['circle'] * len(labels),
-    "noises": all_epoch_noises[0],
-    "order": epoch_orders[0]
+    #"noises": all_epoch_noises[0],
+    #"order": epoch_orders[0]
 })
 
 memorymapvisualizer = ImageSensitivityVisualizer(shared_source, shared_resource, max_epoch)
@@ -130,3 +144,5 @@ memory_layout = column(memorymapvisualizer.get_layout(), width=600)
 layout = row(memory_layout)
 
 curdoc().add_root(layout)
+
+save(layout)
