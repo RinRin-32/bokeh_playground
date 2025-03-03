@@ -65,7 +65,6 @@ if args.output is not None:
 h5_file = args.file
 
 # Check if the file has an .h5 extension
-h5_file = args.file
 if not h5_file.lower().endswith(".h5"):
     print(f"Error: The input file '{h5_file}' is not an HDF5 (.h5) file.")
     sys.exit(1)
@@ -88,7 +87,7 @@ with h5py.File(h5_file, "r") as f:
 
 
 # Sort data based on noise
-sort_noises, index, labels, bpe, bls = zip(*sorted(zip(all_noise, range(len(all_noise)), labels, bpe, bls), reverse=True))
+sort_noises, index, labels, bpe, bls, images = zip(*sorted(zip(all_noise, range(len(all_noise)), labels, bpe, bls, images), reverse=True))
 sort_noises = np.array(sort_noises)
 index = np.array(index)
 labels = np.array(labels)
