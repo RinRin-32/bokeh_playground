@@ -13,6 +13,7 @@ from io import BytesIO
 import base64
 import os
 from visualizer.image_memorymap import ImageSensitivityVisualizer
+from visualizer.evolving_ls import EvolvingLabelNoisePlot
 
 def mnist_to_base64(image_array):
     image_array = np.squeeze(image_array, axis=0)  # Remove channel dim -> (28, 28)
@@ -96,11 +97,14 @@ if args.compress:
     sample_bpe = [np.array(epoch_scores)[sample_indices] for epoch_scores in bpe_scores]
     sample_bls = [np.array(epoch_scores)[sample_indices] for epoch_scores in bls_scores]
 
+    sample_noise = [np.array(epoch_scores)[sample_indices] for epoch_scores in all_epoch_noises]
+
     sample_labels = labels[sample_indices]
     sample_images = images[sample_indices]
 
     bpe_scores = sample_bpe
     bls_scores = sample_bls
+    all_epoch_noises = sample_noise
     labels = sample_labels
     images = sample_images
     
@@ -111,30 +115,21 @@ if dataset == 'MNIST':
 elif dataset == 'CIFAR10':
     image_base64_list = [cifar10_to_base64(img) for img in images]
 
-epoch_orders = [np.argsort(noise) for noise in all_epoch_noises]
-
-
 shared_resource = ColumnDataSource(data={
     "bpe": bpe_scores,
     "bls": bls_scores,
-    #"sensitivities": sentivities,
     "epoch": list(range(max_epoch)),
-    #"noises": all_epoch_noises,
-    #"order": epoch_orders
 })
 
 shared_source = ColumnDataSource(data={
     "img": image_base64_list,
-    "label": labels,
+    "label": labels.astype(str),
     "bpe": bpe_scores[0],
     "bls": bls_scores[0],
-    #"sensitivities": sentivities[0],
     "size": [6] * len(labels),
     "alpha": [1.0] * len(labels),
     "color": ['blue'] * len(labels),
     "marker": ['circle'] * len(labels),
-    #"noises": all_epoch_noises[0],
-    #"order": epoch_orders[0]
 })
 
 memorymapvisualizer = ImageSensitivityVisualizer(shared_source, shared_resource, max_epoch)
