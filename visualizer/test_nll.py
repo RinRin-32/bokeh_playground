@@ -34,7 +34,8 @@ class TestNLLAnimation:
 
     def setup_callbacks(self):
         self.step_slider.js_on_change("value", CustomJS(args={"source": self.data_stream,
-                                                            "original": self.shared_resource},
+                                                            "original": self.shared_resource,
+                                                            "intermediate": self.source},
         code="""
             var step = cb_obj.value;
             var shared_data = original.data;
@@ -70,6 +71,10 @@ class TestNLLAnimation:
                     source.data["estimated_nll"].push(shared_data["estimated_nll"][step_index]);
                 }
             }
+            intermediate.data["y"] = shared_data["y"][step]
+            intermediate.data["x"] = shared_data["x"][step]
+
+            intermediate.change.emit();
             
             source.change.emit();
         """))

@@ -108,11 +108,26 @@ if dataset == 'MNIST':
 elif dataset == 'CIFAR10':
     image_base64_list = [cifar10_to_base64(img) for img in images]
 
+all_epoch_indices = [np.argsort(noises)[::-1] for noises in all_epoch_noises]
+
+relative_positioning = []
+for indices in all_epoch_indices:
+    # Create a new array of the same size
+    relative_position = np.zeros_like(indices)
+    
+    # Fill relative_position such that for each sorted position, we store the original index
+    for sorted_index, original_index in enumerate(indices):
+        relative_position[original_index] = sorted_index
+    
+    # Append the relative_position for the current epoch
+    relative_positioning.append(relative_position)
+
 shared_resource = ColumnDataSource(data={
     "y": all_epoch_noises,
     "test_nll": test_nll,
     "estimated_nll": estimated_nll,
     "epoch": list(range(max_epoch)),
+    "x": relative_positioning
 })
 
 
@@ -124,13 +139,13 @@ shared_source = ColumnDataSource(data={
     "color": ['blue'] * len(labels),
     "marker": ['circle'] * len(labels),
     "y": all_epoch_noises[0],
-    "x": list(range(len(labels))),
+    "x": relative_positioning[0],
 })
 
 evolving_ls = EvolvingLabelNoisePlot(shared_source, dataset)
 nll_plot = TestNLLAnimation(shared_source, shared_resource, max_epoch)
 
-ls_layout = column(evolving_ls.get_layout(), width=600)
+ls_layout = column(evolving_ls.get_layout(), width=800)
 nll_layout = column(nll_plot.get_layout(), width=600)
 
 layout = column(ls_layout, nll_layout)
