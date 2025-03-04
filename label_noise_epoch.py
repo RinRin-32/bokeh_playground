@@ -1,3 +1,5 @@
+from visualizer.evolving_ls import EvolvingLabelNoisePlot
+from visualizer.test_nll import TestNLLAnimation
 import h5py
 from bokeh.plotting import curdoc, output_file, save
 from bokeh.models import ColumnDataSource
@@ -12,7 +14,6 @@ import matplotlib.cm as cm
 from io import BytesIO
 import base64
 import os
-from visualizer.image_memorymap import ImageSensitivityVisualizer
 
 def mnist_to_base64(image_array):
     image_array = np.squeeze(image_array, axis=0)  # Remove channel dim -> (28, 28)
@@ -80,12 +81,10 @@ with h5py.File(h5_file, "r") as f:
     labels = np.array(f["labels"])
 
     sentivities = [f[f"scores/epoch_{epoch}"]["sensitivities"][()] for epoch in range(max_epoch)]
-    bpe_scores = [f[f"scores/epoch_{epoch}"]["bpe"][()] for epoch in range(max_epoch)]
-    bls_scores = [f[f"scores/epoch_{epoch}"]["bls"][()] for epoch in range(max_epoch)]
     all_epoch_noises = [f[f"scores/epoch_{epoch}"]["noise"][()] for epoch in range(max_epoch)]
 
     test_acc = [f[f"results/epoch_{epoch}"]["test_acc"][()] for epoch in range(max_epoch)]
-    test_nll = [f[f"results/epoch_{epoch}"]["test_nll"][()] for epoch in range(max_epoch)]
+    test_nll = [float(f[f"results/epoch_{epoch}"]["test_nll"][()].item()) for epoch in range(max_epoch)]    
     estimated_nll = [f[f"results/epoch_{epoch}"]["estimated_nll"][()] for epoch in range(max_epoch)]
 
 
@@ -93,16 +92,11 @@ if args.compress:
     sample_size = min(args.n_sample, len(labels))
     sample_indices = np.random.choice(len(labels), sample_size, replace=False)
 
-    sample_bpe = [np.array(epoch_scores)[sample_indices] for epoch_scores in bpe_scores]
-    sample_bls = [np.array(epoch_scores)[sample_indices] for epoch_scores in bls_scores]
-
     sample_noise = [np.array(epoch_scores)[sample_indices] for epoch_scores in all_epoch_noises]
 
     sample_labels = labels[sample_indices]
     sample_images = images[sample_indices]
 
-    bpe_scores = sample_bpe
-    bls_scores = sample_bls
     all_epoch_noises = sample_noise
     labels = sample_labels
     images = sample_images
@@ -115,27 +109,31 @@ elif dataset == 'CIFAR10':
     image_base64_list = [cifar10_to_base64(img) for img in images]
 
 shared_resource = ColumnDataSource(data={
-    "bpe": bpe_scores,
-    "bls": bls_scores,
+    "y": all_epoch_noises,
+    "test_nll": test_nll,
+    "estimated_nll": estimated_nll,
     "epoch": list(range(max_epoch)),
 })
+
 
 shared_source = ColumnDataSource(data={
     "img": image_base64_list,
     "label": labels.astype(str),
-    "bpe": bpe_scores[0],
-    "bls": bls_scores[0],
     "size": [6] * len(labels),
     "alpha": [1.0] * len(labels),
     "color": ['blue'] * len(labels),
     "marker": ['circle'] * len(labels),
+    "y": all_epoch_noises[0],
+    "x": list(range(len(labels))),
 })
 
-memorymapvisualizer = ImageSensitivityVisualizer(shared_source, shared_resource, max_epoch)
+evolving_ls = EvolvingLabelNoisePlot(shared_source, dataset)
+nll_plot = TestNLLAnimation(shared_source, shared_resource, max_epoch)
 
-memory_layout = column(memorymapvisualizer.get_layout(), width=600)
+ls_layout = column(evolving_ls.get_layout(), width=600)
+nll_layout = column(nll_plot.get_layout(), width=600)
 
-layout = row(memory_layout)
+layout = column(ls_layout, nll_layout)
 
 curdoc().add_root(layout)
 
