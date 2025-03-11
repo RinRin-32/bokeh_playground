@@ -14,6 +14,7 @@ import matplotlib.cm as cm
 from io import BytesIO
 import base64
 import os
+import matplotlib.pyplot as plt
 
 def mnist_to_base64(image_array):
     image_array = np.squeeze(image_array, axis=0)  # Remove channel dim -> (28, 28)
@@ -46,6 +47,27 @@ def cifar10_to_base64(image_array):
     buffered = BytesIO()
     img.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode("utf-8")
+
+def generate_noise_barchart(noise_values, width=150, height=100, dpi=50):
+    # Create a bar chart from the noise values
+    fig, ax = plt.subplots(figsize=(width/100, height/100), dpi=dpi)
+    ax.bar(range(len(noise_values)), noise_values, color='gray')
+    # Remove ticks and labels for a clean image
+    ax.set_xticks(range(len(noise_values)))
+    ax.set_xticklabels([f"{i}" for i in range(len(noise_values))], fontsize=8)
+
+    ax.set_yticks([])
+    plt.tight_layout()
+
+    # Save the figure to a bytes buffer and encode as base64
+    buf = BytesIO()
+    plt.savefig(buf, format="png", bbox_inches='tight')
+    #plt.savefig('./test.png', format="png", bbox_inches='tight')
+    #raise RuntimeError('printed')
+    buf.flush()
+    plt.close(fig)
+    buf.seek(0)
+    return base64.b64encode(buf.getvalue()).decode("utf-8")
 
 parser = argparse.ArgumentParser(description="Launch the Bokeh server displaying Label Smoothing plot with an HDF5 file.")
 parser.add_argument("--file", type=str, required=True, help="Path to the HDF5 file")
@@ -83,6 +105,8 @@ with h5py.File(h5_file, "r") as f:
     sentivities = [f[f"scores/epoch_{epoch}"]["sensitivities"][()] for epoch in range(max_epoch)]
     all_epoch_noises = [f[f"scores/epoch_{epoch}"]["noise"][()] for epoch in range(max_epoch)]
 
+    all_induced_noises = [f[f"scores/epoch_{epoch}"]["all_noise"][()] for epoch in range(max_epoch)]
+
     test_acc = [f[f"results/epoch_{epoch}"]["test_acc"][()] for epoch in range(max_epoch)]
     test_nll = [float(f[f"results/epoch_{epoch}"]["test_nll"][()].item()) for epoch in range(max_epoch)]    
     estimated_nll = [f[f"results/epoch_{epoch}"]["estimated_nll"][()] for epoch in range(max_epoch)]
@@ -94,12 +118,15 @@ if args.compress:
 
     sample_noise = [np.array(epoch_scores)[sample_indices] for epoch_scores in all_epoch_noises]
 
+    sample_induced_noise = [np.array(noise)[sample_indices] for noise in all_induced_noises]
+
     sample_labels = labels[sample_indices]
     sample_images = images[sample_indices]
 
     all_epoch_noises = sample_noise
     labels = sample_labels
     images = sample_images
+    all_induced_noises = sample_induced_noise
     
 
 # Convert all images in sorted order
@@ -129,12 +156,38 @@ y_max = max(np.max(noises) for noises in all_epoch_noises)
 # Store them as a list
 y_range = [y_min, y_max]
 
+# Normalize each epoch's noise independently
+'''
+normalized_induced_noises = []
+for noises in all_induced_noises:
+    epoch_min = np.min(noises)
+    epoch_max = np.max(noises)
+    normalized_noises = (noises - epoch_min) / (epoch_max - epoch_min) if epoch_max > epoch_min else np.zeros_like(noises)
+    normalized_induced_noises.append(normalized_noises)
+
+normalized_induced_noises = [noises.tolist() for noises in normalized_induced_noises]
+'''
+
+print(len(all_induced_noises), len(all_epoch_noises))
+
+normalized_induced_noises = all_induced_noises
+
+noise_barcharts = []
+for epoch in range(len(normalized_induced_noises)):
+    epoch_chart = []
+    for images in range(len(normalized_induced_noises[epoch])):
+        epoch_chart.append(generate_noise_barchart(normalized_induced_noises[epoch][images]))
+    noise_barcharts.append(epoch_chart)
+
+print(len(noise_barcharts))
+
 shared_resource = ColumnDataSource(data={
     "y": all_epoch_noises,
     "test_nll": test_nll,
     "estimated_nll": estimated_nll,
     "epoch": list(range(max_epoch)),
-    "x": relative_positioning
+    "x": relative_positioning,
+    'noise_chart': noise_barcharts
 })
 
 
@@ -147,7 +200,11 @@ shared_source = ColumnDataSource(data={
     "marker": ['circle'] * len(labels),
     "y": all_epoch_noises[0],
     "x": relative_positioning[0],
+    "noise_chart": noise_barcharts[0]
 })
+
+
+max_epoch-=1
 
 evolving_ls = EvolvingLabelNoisePlot(shared_source, dataset, y_range)
 nll_plot = TestNLLAnimation(shared_source, shared_resource, max_epoch)

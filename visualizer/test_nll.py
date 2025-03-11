@@ -112,6 +112,7 @@ class TestNLLAnimation:
             }
             intermediate.data["y"] = shared_data["y"][step];
             intermediate.data["x"] = shared_data["x"][step];
+            intermediate.data["noise_chart"] = shared_data["noise_chart"][step];
 
             intermediate.change.emit();
             source.change.emit();
