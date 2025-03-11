@@ -122,6 +122,13 @@ for indices in all_epoch_indices:
     # Append the relative_position for the current epoch
     relative_positioning.append(relative_position)
 
+# Extract min and max across all epochs
+y_min = min(np.min(noises) for noises in all_epoch_noises)
+y_max = max(np.max(noises) for noises in all_epoch_noises)
+
+# Store them as a list
+y_range = [y_min, y_max]
+
 shared_resource = ColumnDataSource(data={
     "y": all_epoch_noises,
     "test_nll": test_nll,
@@ -142,11 +149,14 @@ shared_source = ColumnDataSource(data={
     "x": relative_positioning[0],
 })
 
-evolving_ls = EvolvingLabelNoisePlot(shared_source, dataset)
+evolving_ls = EvolvingLabelNoisePlot(shared_source, dataset, y_range)
 nll_plot = TestNLLAnimation(shared_source, shared_resource, max_epoch)
 
-ls_layout = column(evolving_ls.get_layout(), width=800)
-nll_layout = column(nll_plot.get_layout(), width=600)
+ls_layout = column(evolving_ls.get_layout(), width=800, height=400)
+nll_layout = column(nll_plot.get_layout(), height=200, width=800)
+
+#and history line
+
 
 layout = column(ls_layout, nll_layout)
 

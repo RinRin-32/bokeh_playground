@@ -6,9 +6,12 @@ from collections import defaultdict
 
 
 class EvolvingLabelNoisePlot:
-    def __init__(self, shared_soruce, plot_name):
+    def __init__(self, shared_soruce, plot_name, y_range):
         self.shared_source = shared_soruce
         self.plot_name = plot_name
+
+        self.y_min = y_range[0]
+        self.y_max = y_range[1]
 
         self.plot = self.create_plot()
 
@@ -24,7 +27,8 @@ class EvolvingLabelNoisePlot:
     def create_plot(self):
         p = figure(width=800, height=600, tools="reset,save,box_select",
            title=f"{self.plot_name} Label Noise Distribution",
-           x_axis_label="Examples", y_axis_label=r"Label Noise ||ε||₂")
+           x_axis_label="Examples", y_axis_label=r"Label Noise ||ε||₂",
+           y_range=(self.y_min, self.y_max))
         
         p.title.text_font_size = "25px"
         p.title.align = 'center'
@@ -52,12 +56,28 @@ class EvolvingLabelNoisePlot:
             var images = source.data["img"];
             var labels = source.data["label"];
             
-            var html = "<h3>Selected Images:</h3>";
+            var groupedImages = {};
+            
+            // Collect images by label
             for (var i = 0; i < indices.length; i++) {
-                html += "<div style='display:inline-block; margin:5px; text-align:center;'>";
-                html += "<img src='data:image/png;base64," + images[indices[i]] + "' width='64' height='64'><br>";
-                html += "Label: " + labels[indices[i]] + "</div>";
+                var label = labels[indices[i]];
+                var imgTag = "<img src='data:image/png;base64," + images[indices[i]] + "' width='64' height='64'>";
+                
+                if (!(label in groupedImages)) {
+                    groupedImages[label] = [];
+                }
+                groupedImages[label].push(imgTag);
             }
+            
+            // Construct the HTML grouped by label
+            var html = "<h3>Selected Images:</h3>";
+            var sortedLabels = Object.keys(groupedImages).sort();
+            
+            sortedLabels.forEach(function(label) {
+                html += "<div style='margin-bottom:10px;'><b>Label: " + label + "</b><br>";
+                html += groupedImages[label].join(" ") + "</div>";
+            });
+
             image_display.text = '<div class="scroll-box">' + html + '</div>';
         """))
     
