@@ -181,6 +181,8 @@ for epoch in range(len(normalized_induced_noises)):
         epoch_chart.append(generate_noise_barchart(normalized_induced_noises[epoch][images]))
     noise_barcharts.append(epoch_chart)
 
+normalized_induced_noises = np.array(normalized_induced_noises).reshape(len(normalized_induced_noises), -1, 10)
+
 
 shared_resource = ColumnDataSource(data={
     "y": all_epoch_noises,
@@ -188,10 +190,11 @@ shared_resource = ColumnDataSource(data={
     "estimated_nll": estimated_nll,
     "epoch": list(range(max_epoch)),
     "x": relative_positioning,
-    'noise_chart': noise_barcharts
+    "noise_chart": noise_barcharts,
+#    "induced_noise": normalized_induced_noises
 })
 
-
+#get all the index here somehow to reduce computation and checks required done in the jscallbacks
 shared_source = ColumnDataSource(data={
     "img": image_base64_list,
     "label": labels.astype(str),
@@ -201,7 +204,8 @@ shared_source = ColumnDataSource(data={
     "marker": ['circle'] * len(labels),
     "y": all_epoch_noises[0],
     "x": relative_positioning[0],
-    "noise_chart": noise_barcharts[0]
+    "noise_chart": noise_barcharts[0],
+#    "induced_noise": normalized_induced_noises[0]
 })
 
 max_epoch-=1
@@ -219,3 +223,16 @@ curdoc().add_root(layout)
 if args.output is not None:
     layout.sizing_mode = "stretch_both" 
     save(layout)
+
+
+
+#Notes:
+
+
+'''
+Likely the way to make the noise_chart changes dynamically in evolvingnoiseplot is to pre sort the whole thing, store the index in a list,
+
+this way so that the callback doesn't have to do all the loop and only display according to the datasource
+
+maybe consider removing the images for the noise plot, just to reduce the file size
+'''
