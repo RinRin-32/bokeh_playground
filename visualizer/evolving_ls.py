@@ -1,4 +1,4 @@
-from bokeh.models import ColumnDataSource, CustomJS, Div
+from bokeh.models import ColumnDataSource, CustomJS, Div, HoverTool
 from bokeh.plotting import figure
 from bokeh.layouts import row
 
@@ -38,6 +38,17 @@ class EvolvingLabelNoisePlot:
         p.yaxis.axis_label_text_font_size = "20pt"
 
         p.scatter("x", "y", source=self.shared_source, size=6, color="color", legend_label="Data", fill_alpha=0.6)
+
+        hover = HoverTool(tooltips="""
+                <div>
+                    <img src="data:image/png;base64,@img" width="28" height="28"></img>
+                    <br>
+                    <b>Label:</b> @label
+                    <br>
+                    <img src="data:image/png;base64,@noise_chart" width="150" height="100"></img>
+                </div>
+        """)
+        p.add_tools(hover)
 
         return p
     
