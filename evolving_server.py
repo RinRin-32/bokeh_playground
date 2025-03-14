@@ -30,7 +30,6 @@ args = parser.parse_args()
 h5_file = args.file
 
 # Check if the file has an .h5 extension
-h5_file = args.file
 if not h5_file.lower().endswith(".h5"):
     print(f"Error: The input file '{h5_file}' is not an HDF5 (.h5) file.")
     sys.exit(1)
