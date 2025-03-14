@@ -15,6 +15,37 @@ from io import BytesIO
 import base64
 import os
 import matplotlib.pyplot as plt
+from visualizer.imagesubset import ImageSet
+
+def sample_one_per_label(labels):
+    unique_labels = np.unique(labels)
+    sampled_indices = []
+    label = []
+
+    # For each unique label, randomly select one index
+    for label in unique_labels:
+        label_indices = [i for i, lbl in enumerate(labels) if lbl == label]
+        sampled_index = np.random.choice(label_indices)  # Randomly choose an index
+        sampled_indices.append(sampled_index)
+
+    return sampled_indices
+
+def extract_data_by_epoch(data, sampled_indices):
+    # Initialize a list to store the extracted data for all epochs
+    extracted_data = []
+
+    # Loop through each epoch and use sampled indices to extract data
+    for epoch in range(len(data)):
+        # Get the data for the current epoch (n_samples x noises)
+        epoch_data = data[epoch]
+
+        # Extract the samples based on the sampled indices
+        sampled_data_for_epoch = [epoch_data[i] for i in sampled_indices]
+
+        # Add the extracted data to the result list
+        extracted_data.append(sampled_data_for_epoch)
+
+    return extracted_data
 
 def mnist_to_base64(image_array):
     image_array = np.squeeze(image_array, axis=0)  # Remove channel dim -> (28, 28)
@@ -175,14 +206,15 @@ for epoch_noises in all_induced_noises:  # Each epoch
 
 
 noise_barcharts = []
+induced_noise = []
 for epoch in range(len(normalized_induced_noises)):
     epoch_chart = []
+    noise = []
     for images in range(len(normalized_induced_noises[epoch])):
+        noise.append(normalized_induced_noises[epoch][images])
         epoch_chart.append(generate_noise_barchart(normalized_induced_noises[epoch][images]))
+    induced_noise.append(noise)
     noise_barcharts.append(epoch_chart)
-
-normalized_induced_noises = np.array(normalized_induced_noises).reshape(len(normalized_induced_noises), -1, 10)
-
 
 shared_resource = ColumnDataSource(data={
     "y": all_epoch_noises,
@@ -191,7 +223,6 @@ shared_resource = ColumnDataSource(data={
     "epoch": list(range(max_epoch)),
     "x": relative_positioning,
     "noise_chart": noise_barcharts,
-#    "induced_noise": normalized_induced_noises
 })
 
 #get all the index here somehow to reduce computation and checks required done in the jscallbacks
@@ -205,34 +236,36 @@ shared_source = ColumnDataSource(data={
     "y": all_epoch_noises[0],
     "x": relative_positioning[0],
     "noise_chart": noise_barcharts[0],
-#    "induced_noise": normalized_induced_noises[0]
 })
 
+epoch_counter = ColumnDataSource(data={"epoch": [0]})
+
+subsample = sample_one_per_label(labels)
+subsample_image = [image_base64_list[i] for i in subsample]
+subsample_noise_epoch = extract_data_by_epoch(induced_noise, subsample)
+
+
+subsample_source = []
+for i in range(len(subsample_noise_epoch)):    
+    noise_data = np.array(subsample_noise_epoch[i])
+    subsample_epoch = [ColumnDataSource(data={"categories": [str(i) for i in range(10)], "values": noise_data[i]}) for i in range(len(noise_data))]
+    subsample_source.append(subsample_epoch)
+
+subsample_intermediate = subsample_source[0]
 max_epoch-=1
 
 evolving_ls = EvolvingLabelNoisePlot(shared_source, dataset, y_range, len(all_epoch_noises[0]))
-nll_plot = TestNLLAnimation(shared_source, shared_resource, max_epoch)
+nll_plot = TestNLLAnimation(shared_source, shared_resource, max_epoch, subsample_intermediate, subsample_source)
+image_set = ImageSet(subsample_intermediate, subsample_image)
 
 ls_layout = column(evolving_ls.get_layout(), sizing_mode="stretch_width")
 nll_layout = column(nll_plot.get_layout(), sizing_mode="stretch_height")
+image_layout = column(image_set.get_layout(), sizing_mode="stretch_both")
 
-layout = column(row(ls_layout), row(nll_layout), sizing_mode="stretch_both")
+layout = column(row(ls_layout), row(nll_layout, image_layout), sizing_mode="stretch_both")
 
 curdoc().add_root(layout)
 
 if args.output is not None:
     layout.sizing_mode = "stretch_both" 
     save(layout)
-
-
-
-#Notes:
-
-
-'''
-Likely the way to make the noise_chart changes dynamically in evolvingnoiseplot is to pre sort the whole thing, store the index in a list,
-
-this way so that the callback doesn't have to do all the loop and only display according to the datasource
-
-maybe consider removing the images for the noise plot, just to reduce the file size
-'''

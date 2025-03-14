@@ -5,12 +5,14 @@ import matplotlib
 from bokeh.plotting import figure
 
 class TestNLLAnimation:
-    def __init__(self, shared_source, shared_resource, max_epoch, default_color='blue'):
+    def __init__(self, shared_source, shared_resource, max_epoch, subsample_intermediate, subsample_source, default_color='blue'):
         self.source = shared_source
         self.shared_resource = shared_resource
         self.max_epoch = max_epoch
         self.playing = False
         self.default_color = default_color
+        self.subsample_intermediate = subsample_intermediate
+        self.subsample_source = subsample_source
 
         initial_epoch = 0
         initial_index = shared_resource.data["epoch"].index(initial_epoch) if initial_epoch in shared_resource.data["epoch"] else None
@@ -77,7 +79,9 @@ class TestNLLAnimation:
     def setup_callbacks(self):
         self.step_slider.js_on_change("value", CustomJS(args={"source": self.data_stream,
                                                               "original": self.shared_resource,
-                                                              "intermediate": self.source},
+                                                              "intermediate": self.source,
+                                                              "subsample_intermediate": self.subsample_intermediate,
+                                                              "subsample_source": self.subsample_source},
         code="""
             var step = cb_obj.value;
             var shared_data = original.data;
@@ -113,6 +117,12 @@ class TestNLLAnimation:
             intermediate.data["y"] = shared_data["y"][step];
             intermediate.data["x"] = shared_data["x"][step];
             intermediate.data["noise_chart"] = shared_data["noise_chart"][step];
+
+            for (let i = 0; i < subsample_intermediate.length; i++) {
+                subsample_intermediate[i].data = subsample_source[step][i].data;  // Update bar chart data
+                subsample_intermediate[i].change.emit();
+                console.log("Step: ", step);
+            }
 
             intermediate.change.emit();
             source.change.emit();
