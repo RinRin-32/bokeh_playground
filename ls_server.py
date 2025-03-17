@@ -63,8 +63,8 @@ with h5py.File(h5_file, "r") as f:
     yy = [f[f"scores/epoch_{epoch}"]["decision_boundary"]["yy"][:] for epoch in range(max_epoch)]
     Z = [f[f"scores/epoch_{epoch}"]["decision_boundary"]["Z"][:] for epoch in range(max_epoch)]
 
-colors = ["blue", "green"]
-marker = ["circle", "square"]
+colors = ["white", "white"]
+marker = ["circle", "star"]
 
 xs = []
 ys = []

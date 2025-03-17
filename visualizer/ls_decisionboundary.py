@@ -15,23 +15,24 @@ class LSBoundaryVisualizer:
         self.y = self.source.data['class']
         self.classes = np.unique(self.y)
 
+        self.play_pause_button = Button(label="Play")
+
         x_min, x_max = self.X[:, 0].min() - 1, self.X[:, 0].max() + 1
         y_min, y_max = self.X[:, 1].min() - 1, self.X[:, 1].max() + 1
 
         self.plot = figure(
-            title="Evolving Boundary Visualization",
+            title="Induced Noise from Adaptive Variation Learning",
             width=600, height=600,
             x_range=(x_min, x_max),
             y_range=(y_min, y_max),
-            tools="tap,box_select,box_zoom,reset,pan",
-            active_drag="box_select"
+            tools="",
         )
 
         initial_xs = shared_resource.data["xs"][0]
         initial_ys = shared_resource.data["ys"][0]
         self.boundary_source = ColumnDataSource(data={"xs": initial_xs, "ys": initial_ys})
 
-        self.plot.scatter("x", "y", source=self.source, size="size", color="color", marker="marker")
+        self.plot.scatter("x", "y", source=self.source, size="size", color="color", marker="marker", line_color='black')
         self.plot.multi_line(xs="xs", ys="ys", source=self.boundary_source, line_width=2, color="black")
 
         self.step_slider = Slider(start=0, end=self.max_epoch, value=0, step=1, title="Epoch")
@@ -57,5 +58,25 @@ class LSBoundaryVisualizer:
             }
         """))
 
+        self.play_pause_button.js_on_click(CustomJS(args={"slider": self.step_slider, "button": self.play_pause_button}, code="""
+            var step = slider.value;
+            var is_playing = button.label == "Pause";  // Check if currently playing
+            
+            if (is_playing) {
+                button.label = "Play";  // Change to "Play" when pausing
+                clearTimeout(slider._timeout);
+            } else {
+                button.label = "Pause";  // Change to "Pause" when playing
+                function animate() {
+                    if (step < slider.end) {
+                        step += 1;
+                        slider.value = step;
+                        slider._timeout = setTimeout(animate, 100);
+                    }
+                }
+                animate();
+            }
+        """))
+
     def get_layout(self):
-        return column(self.plot, self.step_slider)
+        return column(self.plot, self.step_slider, self.play_pause_button)
