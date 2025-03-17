@@ -40,9 +40,8 @@ class LSBoundaryVisualizer:
 
     def setup_callbacks(self):
         self.step_slider.js_on_change("value", CustomJS(args={"source": self.source, 
-                                                            "shared_resource": self.shared_resource,
-                                                            "boundary_source": self.boundary_source,
-                                                            }, 
+                                                               "shared_resource": self.shared_resource,
+                                                               "boundary_source": self.boundary_source}, 
         code="""
             var step = cb_obj.value;
             var shared_data = shared_resource.data;
@@ -58,20 +57,29 @@ class LSBoundaryVisualizer:
             }
         """))
 
-        self.play_pause_button.js_on_click(CustomJS(args={"slider": self.step_slider, "button": self.play_pause_button}, code="""
+        self.play_pause_button.js_on_click(CustomJS(args={"slider": self.step_slider, "button": self.play_pause_button, "max_epoch": self.max_epoch}, code="""
             var step = slider.value;
-            var is_playing = button.label == "Pause";  // Check if currently playing
+            var is_playing = button.label == "Pause";
+            var is_at_end = step >= max_epoch;
+            
+            if (is_at_end) {
+                button.label = "Restart";
+                slider.value = 0;
+                step = 0;
+            }
             
             if (is_playing) {
-                button.label = "Play";  // Change to "Play" when pausing
+                button.label = "Play";
                 clearTimeout(slider._timeout);
             } else {
-                button.label = "Pause";  // Change to "Pause" when playing
+                button.label = "Pause";
                 function animate() {
-                    if (step < slider.end) {
+                    if (step < max_epoch) {
                         step += 1;
                         slider.value = step;
                         slider._timeout = setTimeout(animate, 100);
+                    } else {
+                        button.label = "Restart";
                     }
                 }
                 animate();
