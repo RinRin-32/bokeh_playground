@@ -79,7 +79,7 @@ class LSBoundaryVisualizer:
                     if (step < max_epoch) {
                         step += 1;
                         slider.value = step;
-                        slider._timeout = setTimeout(animate, 100);
+                        slider._timeout = setTimeout(animate, 500);
                     } else {
                         button.label = "Restart";
                     }
