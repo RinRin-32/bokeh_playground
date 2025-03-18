@@ -1,21 +1,23 @@
-from bokeh.models import Button, CustomJS, Slider, ColumnDataSource, Div
+from bokeh.models import Button, CustomJS, Slider, ColumnDataSource, Div, TapTool, PolySelectTool
 from bokeh.layouts import column, row
 import numpy as np
 import matplotlib
 from bokeh.plotting import figure
 
 class LSBoundaryVisualizer:
-    def __init__(self, shared_source, shared_resource, max_epoch, colors):
+    def __init__(self, shared_source, shared_resource, max_step, colors, mode='Epoch'):
         self.source = shared_source
         self.shared_resource = shared_resource
-        self.max_epoch = max_epoch
+        self.max_step = max_step
         self.colors = colors
+        self.original_colors = self.source.data['color'].copy() # Store original colors
 
         self.X = np.column_stack([self.source.data[feature] for feature in self.source.data if feature in ['x', 'y']])
         self.y = self.source.data['class']
         self.classes = np.unique(self.y)
 
         self.play_pause_button = Button(label="Play")
+        self.clear_selection_button = Button(label="Clear Selection")
 
         x_min, x_max = self.X[:, 0].min() - 1, self.X[:, 0].max() + 1
         y_min, y_max = self.X[:, 1].min() - 1, self.X[:, 1].max() + 1
@@ -26,7 +28,8 @@ class LSBoundaryVisualizer:
             #sizing_mode="scale_both",
             x_range=(x_min, x_max),
             y_range=(y_min, y_max),
-            tools="",
+            #tools="tap, box_select, reset, pan, wheel_zoom",
+            tools=""
         )
 
         initial_xs = shared_resource.data["xs"][0]
@@ -36,7 +39,7 @@ class LSBoundaryVisualizer:
         self.plot.scatter("x", "y", source=self.source, size="size", color="color", marker="marker", line_color='black', alpha="alpha")
         self.plot.multi_line(xs="xs", ys="ys", source=self.boundary_source, line_width=2, color="black")
 
-        self.step_slider = Slider(start=0, end=self.max_epoch, value=0, step=1, title="Epoch")
+        self.step_slider = Slider(start=0, end=self.max_step, value=0, step=1, title=mode)
         self.setup_callbacks()
 
     def setup_callbacks(self):
@@ -53,16 +56,17 @@ class LSBoundaryVisualizer:
                 source.data["alpha"] = shared_data["alpha"][step_index];
                 boundary_source.data["xs"] = shared_data["xs"][step_index];
                 boundary_source.data["ys"] = shared_data["ys"][step_index];
+                source.data["color"] = shared_data["batch_color"][step_index];
 
                 source.change.emit();
                 boundary_source.change.emit();
             }
         """))
 
-        self.play_pause_button.js_on_click(CustomJS(args={"slider": self.step_slider, "button": self.play_pause_button, "max_epoch": self.max_epoch}, code="""
+        self.play_pause_button.js_on_click(CustomJS(args={"slider": self.step_slider, "button": self.play_pause_button, "max_step": self.max_step}, code="""
             var step = slider.value;
             var is_playing = button.label == "Pause";
-            var is_at_end = step >= max_epoch;
+            var is_at_end = step >= max_step;
             
             if (is_at_end) {
                 button.label = "Restart";
@@ -76,10 +80,10 @@ class LSBoundaryVisualizer:
             } else {
                 button.label = "Pause";
                 function animate() {
-                    if (step < max_epoch) {
+                    if (step < max_step) {
                         step += 1;
                         slider.value = step;
-                        slider._timeout = setTimeout(animate, 500);
+                        slider._timeout = setTimeout(animate, 100);
                     } else {
                         button.label = "Restart";
                     }
@@ -88,5 +92,21 @@ class LSBoundaryVisualizer:
             }
         """))
 
+        self.source.selected.js_on_change('indices', CustomJS(args={'source': self.source, 'original_colors': self.original_colors}, code="""
+            const selected_indices = source.selected.indices;
+            const new_colors = source.data['color'].slice(); // Create a copy of the current colors
+            for (let i = 0; i < selected_indices.length; i++) {
+                new_colors[selected_indices[i]] = 'red';
+            }
+            source.data['color'] = new_colors;
+            source.change.emit();
+        """))
+
+        self.clear_selection_button.js_on_click(CustomJS(args={'source': self.source, 'original_colors': self.original_colors}, code="""
+            source.data['color'] = original_colors;
+            source.selected.indices = [];
+            source.change.emit();
+        """))
+
     def get_layout(self):
-        return column(self.plot, self.step_slider, self.play_pause_button)
+        return column(self.plot, self.step_slider, self.play_pause_button, self.clear_selection_button)
