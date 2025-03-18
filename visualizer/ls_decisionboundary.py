@@ -22,7 +22,8 @@ class LSBoundaryVisualizer:
 
         self.plot = figure(
             title="Induced Noise from Adaptive Variation Learning",
-            width=600, height=600,
+            width=400, height=400,
+            #sizing_mode="scale_both",
             x_range=(x_min, x_max),
             y_range=(y_min, y_max),
             tools="",
@@ -32,7 +33,7 @@ class LSBoundaryVisualizer:
         initial_ys = shared_resource.data["ys"][0]
         self.boundary_source = ColumnDataSource(data={"xs": initial_xs, "ys": initial_ys})
 
-        self.plot.scatter("x", "y", source=self.source, size="size", color="color", marker="marker", line_color='black')
+        self.plot.scatter("x", "y", source=self.source, size="size", color="color", marker="marker", line_color='black', alpha="alpha")
         self.plot.multi_line(xs="xs", ys="ys", source=self.boundary_source, line_width=2, color="black")
 
         self.step_slider = Slider(start=0, end=self.max_epoch, value=0, step=1, title="Epoch")
@@ -49,6 +50,7 @@ class LSBoundaryVisualizer:
             
             if (step_index !== -1) {
                 source.data["size"] = shared_data["size"][step_index];
+                source.data["alpha"] = shared_data["alpha"][step_index];
                 boundary_source.data["xs"] = shared_data["xs"][step_index];
                 boundary_source.data["ys"] = shared_data["ys"][step_index];
 

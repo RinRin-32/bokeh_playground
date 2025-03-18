@@ -94,13 +94,36 @@ scaled_sizes = min_size + normalized_noises * (max_size - min_size)
 # Convert to a list of lists (each epoch's sizes as a list)
 scaled_sizes_list = scaled_sizes.tolist()
 
-print(len(scaled_sizes_list[0]))
+# Scale alpha per epoch
+scaled_alphas_list = []
+for epoch_noises in all_epoch_noises:
+    min_noise, max_noise = np.min(epoch_noises), np.max(epoch_noises)
+
+    if max_noise - min_noise == 0:
+        normalized_noises = np.ones_like(epoch_noises)
+    else:
+        normalized_noises = (epoch_noises - min_noise) / (max_noise - min_noise)
+
+    num_levels = 4
+    alpha_levels = [0.05, 0.4, 0.7, 1.0]
+    quantiles = np.linspace(0, 1, num_levels + 1)
+    alpha_assignments = np.zeros_like(normalized_noises)
+
+    for i in range(num_levels):
+        lower_bound = quantiles[i]
+        upper_bound = quantiles[i + 1]
+        mask = (normalized_noises >= lower_bound) & (normalized_noises < upper_bound)
+        alpha_assignments[mask] = alpha_levels[i]
+
+    scaled_alphas_list.append(alpha_assignments.tolist())
+
 
 shared_resource = ColumnDataSource(data={
     "epoch": list(range(max_epoch)),
     "xs": xs,
     "ys": ys,
-    "size": scaled_sizes_list
+    "size": scaled_sizes_list,
+    "alpha": scaled_alphas_list
 })
 
 shared_source = ColumnDataSource(data={
@@ -110,15 +133,17 @@ shared_source = ColumnDataSource(data={
     "color": [colors[cls] for cls in y_train],
     "marker": [marker[cls] for cls in y_train],
     "size": scaled_sizes_list[0],
+    "alpha": scaled_alphas_list[0]
 })
 
 boundary = LSBoundaryVisualizer(shared_source, shared_resource, max_epoch, colors)
 
-boundary_layout = column(boundary.get_layout(), width=600)
+boundary_layout = column(boundary.get_layout(), sizing_mode="scale_both")
 
 layout = row(boundary_layout)
 
 curdoc().add_root(layout)
 
 if args.output is not None:
+    layout.sizing_mode = "scale_both"
     save(layout)
