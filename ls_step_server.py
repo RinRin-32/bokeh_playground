@@ -85,7 +85,6 @@ scaled_sizes = min_size + normalized_noises * (max_size - min_size)
 scaled_sizes_list = scaled_sizes.tolist()
 
 scaled_alphas_list = []
-batch_colors = []
 for epoch_noises in all_epoch_noises:
     min_noise, max_noise = np.min(epoch_noises), np.max(epoch_noises)
 
@@ -107,34 +106,25 @@ for epoch_noises in all_epoch_noises:
 
     scaled_alphas_list.append(alpha_assignments.tolist())
 
-    step_colors = []
-    for alpha in alpha_assignments:
-        if alpha == 1.0:
-            step_colors.append("red")
-        else:
-            step_colors.append("white")
-    batch_colors.append(step_colors)
-
 shared_resource = ColumnDataSource(data={
     "epoch": list(range(max_step)),
     "xs": xs,
     "ys": ys,
     "size": scaled_sizes_list,
     "alpha": scaled_alphas_list,
-    "batch_color": batch_colors
 })
 
 shared_source = ColumnDataSource(data={
     "x": X_coord[:, 0],
     "y": X_coord[:, 1],
     "class": y_train,
-    "color": batch_colors[0],
+    "color": ['white'] * len(y_train),
     "marker": [marker[cls] for cls in y_train],
     "size": scaled_sizes_list[0],
     "alpha": scaled_alphas_list[0]
 })
 
-boundary = LSBoundaryVisualizer(shared_source, shared_resource, max_step, colors, mode='Step')
+boundary = LSBoundaryVisualizer(shared_source, shared_resource, max_step, colors, total_batches, mode='Step')
 
 boundary_layout = column(boundary.get_layout(), sizing_mode="scale_both")
 
