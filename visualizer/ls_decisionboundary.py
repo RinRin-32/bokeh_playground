@@ -57,11 +57,11 @@ class LSBoundaryVisualizer:
         code="""
             var step = cb_obj.value;
             var shared_data = shared_resource.data;
-            var step_index = shared_data["epoch"].indexOf(step);
+            var step_index = step
             var current_epoch = Math.floor(step / total_batches);
             epoch_display.text = "Epoch: " + current_epoch;
             
-            if (step_index !== -1) {
+            if (step_index != -1){
                 source.data["size"] = shared_data["size"][step_index];
                 source.data["alpha"] = shared_data["alpha"][step_index];
                 boundary_source.data["xs"] = shared_data["xs"][step_index];
@@ -70,6 +70,7 @@ class LSBoundaryVisualizer:
                 if (toggle){
                     source.data["logits"] = shared_data["logits"][step_index];
                     source.data["sig_in"] = shared_data["sig_in"][step_index];
+                    source.data["noise"] = shared_data["noise"][step_index];
                 }
 
                 source.change.emit();

@@ -10,6 +10,8 @@ from skimage import measure
 from bokeh.plotting import output_file, save
 import numpy as np
 from visualizer.ls_decisionboundary import LSBoundaryVisualizer
+from visualizer.projection import ProjectionPlot
+from visualizer.noise_bar import BarProjectionPlot
 from visualizer.lineplot import LinePlot
 
 
@@ -63,7 +65,7 @@ with h5py.File(h5_file, "r") as f:
     Z = [f[f"scores/step_{epoch}"]["decision_boundary"]["Z"][:] for epoch in range(max_step)]
 
 colors = ["white", "white"]
-marker = ["circle", "star"]
+marker = ["circle", "square"]
 
 xs = []
 ys = []
@@ -101,7 +103,8 @@ shared_resource = ColumnDataSource(data={
     "size": scaled_sizes_list,
     "alpha": scaled_alphas_list,
     "sig_in": sig_in,
-    "logits": logits
+    "logits": logits,
+    "noise": all_epoch_noises
 })
 
 shared_source = ColumnDataSource(data={
@@ -114,16 +117,25 @@ shared_source = ColumnDataSource(data={
     "alpha": scaled_alphas_list[0],
     "sig_in": sig_in[0],
     "fixed_axis": [0] * len(y_train),
-    "logits": logits[0]
+    "logits": logits[0],
+    "noise": all_epoch_noises[0]
 })
 
 boundary = LSBoundaryVisualizer(shared_source, shared_resource, max_step, colors, total_batches, mode='Step', sig_projection=True)
 projection = LinePlot(shared_source)
+sigmoid = ProjectionPlot(shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in))
+barplot = BarProjectionPlot(shared_source)
 
 boundary_layout = column(boundary.get_layout(), sizing_mode="scale_both")
+sigmoid_layout = column(sigmoid.get_layout())
 projection_layout = column(projection.get_layout())
+barplot_layout = column(barplot.get_layout())
 
-layout = row(boundary_layout, projection_layout)
+layout = row(
+    boundary_layout, 
+    column(sigmoid_layout,projection_layout), 
+    #column(barplot_layout,projection_layout)
+    )
 
 curdoc().add_root(layout)
 
