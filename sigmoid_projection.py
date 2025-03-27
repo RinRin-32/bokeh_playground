@@ -126,15 +126,15 @@ projection = LinePlot(shared_source)
 sigmoid = ProjectionPlot(shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in))
 barplot = BarProjectionPlot(shared_source)
 
-boundary_layout = column(boundary.get_layout(), sizing_mode="scale_both")
+boundary_layout = column(boundary.get_layout())
 sigmoid_layout = column(sigmoid.get_layout())
 projection_layout = column(projection.get_layout())
 barplot_layout = column(barplot.get_layout())
 
 layout = row(
     boundary_layout, 
-    column(sigmoid_layout,projection_layout), 
-    #column(barplot_layout,projection_layout)
+    #column(sigmoid_layout,projection_layout), 
+    column(barplot_layout,projection_layout)
     )
 
 curdoc().add_root(layout)
