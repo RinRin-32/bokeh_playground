@@ -4,7 +4,7 @@ import numpy as np
 from bokeh.plotting import figure
 
 class LSBoundaryVisualizer:
-    def __init__(self, shared_source, shared_resource, max_step, colors, total_batches, mode='Step'):
+    def __init__(self, shared_source, shared_resource, max_step, colors, total_batches, mode='Step', sig_projection=False):
         self.source = shared_source
         self.shared_resource = shared_resource
         self.max_step = max_step
@@ -12,6 +12,7 @@ class LSBoundaryVisualizer:
         self.colors = colors
         self.original_colors = self.source.data['color'].copy() # Store original colors
         self.total_batches = total_batches
+        self.toggle = sig_projection
 
         self.X = np.column_stack([self.source.data[feature] for feature in self.source.data if feature in ['x', 'y']])
         self.y = self.source.data['class']
@@ -51,7 +52,8 @@ class LSBoundaryVisualizer:
                                                                "shared_resource": self.shared_resource,
                                                                "boundary_source": self.boundary_source,
                                                                "epoch_display": self.epoch_display,
-                                                               "total_batches": self.total_batches}, 
+                                                               "total_batches": self.total_batches,
+                                                               "toggle": self.toggle}, 
         code="""
             var step = cb_obj.value;
             var shared_data = shared_resource.data;
@@ -64,6 +66,11 @@ class LSBoundaryVisualizer:
                 source.data["alpha"] = shared_data["alpha"][step_index];
                 boundary_source.data["xs"] = shared_data["xs"][step_index];
                 boundary_source.data["ys"] = shared_data["ys"][step_index];
+
+                if (toggle){
+                    source.data["logits"] = shared_data["logits"][step_index];
+                    source.data["sig_in"] = shared_data["sig_in"][step_index];
+                }
 
                 source.change.emit();
                 boundary_source.change.emit();
