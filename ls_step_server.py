@@ -23,6 +23,8 @@ def extract_boundary_lines(xx, yy, zz):
 parser = argparse.ArgumentParser(description="Launch the Bokeh server with an HDF5 file, this plot is to display changes in model behavior over training step.")
 parser.add_argument("--file", type=str, required=True, help="Path to the HDF5 file")
 parser.add_argument("--output", type=str, required=False, help="If specified filename, while running on python not bokeh serve, the html will be saved in ./output")
+parser.add_argument("--scale_factor", type=int, default=3, help="Scale plotting of influence exponentially, default set at 3")
+
 args = parser.parse_args()
 
 h5_file = args.file
@@ -51,7 +53,6 @@ with h5py.File(h5_file, "r") as f:
     X_coord = np.array(f["coord/X_train"])
     y_train = np.array(f["coord/y_train"])
 
-    sentivities = [f[f"scores/step_{epoch}"]["sensitivities"][()] for epoch in range(max_step)]
     all_epoch_noises = [f[f"scores/step_{epoch}"]["noise"][()] for epoch in range(max_step)]
 
     xx = [f[f"scores/step_{epoch}"]["decision_boundary"]["xx"][:] for epoch in range(max_step)]
@@ -72,39 +73,23 @@ for step in range(max_step):
     xs.append(boundary_x)
     ys.append(boundary_y)
 
-min_noise, max_noise = np.min(all_epoch_noises), np.max(all_epoch_noises)
-
-if max_noise - min_noise == 0:
-    normalized_noises = np.ones_like(all_epoch_noises)
-else:
-    normalized_noises = (all_epoch_noises - min_noise) / (max_noise - min_noise)
-
-min_size, max_size = 5, 50
-scaled_sizes = min_size + normalized_noises * (max_size - min_size)
-
-scaled_sizes_list = scaled_sizes.tolist()
-
 scaled_alphas_list = []
+scaled_sizes_list = []
+alpha_min, alpha_max = 0.2, 1.0
+size_min, size_max = 5, 50
+scaling_factor = args.scale_factor  # Adjust to control exaggeration
+
 for epoch_noises in all_epoch_noises:
-    min_noise, max_noise = np.min(epoch_noises), np.max(epoch_noises)
+    normed_values = (epoch_noises - np.min(epoch_noises)) / (np.max(epoch_noises) - np.min(epoch_noises) + 1e-8)
+    
+    # Apply exponential transformation to exaggerate differences
+    exp_values = normed_values ** scaling_factor  
 
-    if max_noise - min_noise == 0:
-        normalized_noises = np.ones_like(epoch_noises)
-    else:
-        normalized_noises = (epoch_noises - min_noise) / (max_noise - min_noise)
-
-    num_levels = 4
-    alpha_levels = [0.05, 0.4, 0.7, 1.0]
-    quantiles = np.linspace(0, 1, num_levels + 1)
-    alpha_assignments = np.zeros_like(normalized_noises)
-
-    for i in range(num_levels):
-        lower_bound = quantiles[i]
-        upper_bound = quantiles[i + 1]
-        mask = (normalized_noises >= lower_bound) & (normalized_noises < upper_bound)
-        alpha_assignments[mask] = alpha_levels[i]
+    alpha_assignments = alpha_min + (alpha_max - alpha_min) * exp_values
+    size_assignments = size_min + (size_max - size_min) * exp_values
 
     scaled_alphas_list.append(alpha_assignments.tolist())
+    scaled_sizes_list.append(size_assignments.tolist())
 
 shared_resource = ColumnDataSource(data={
     "epoch": list(range(max_step)),
