@@ -3,6 +3,7 @@ from bokeh.plotting import curdoc
 from visualizer.evolvingboundary import EvolvingBoundaryVisualizer
 from visualizer.evolvingmpe import EvolvingMemoryMapVisualizer
 from visualizer.evolvingsensitivity import EvolvingSensitivityVisualizer
+from visualizer.var_lambda import VarianceLambdaPlot
 from bokeh.models import ColumnDataSource
 from bokeh.layouts import column, row
 import json
@@ -10,7 +11,6 @@ import sys
 import argparse
 import os
 from skimage import measure
-from bokeh.plotting import output_file, save
 
 def extract_boundary_lines(xx, yy, zz):
     contours = measure.find_contours(zz, level=0.5)  # Assuming boundary at 0.5 probability
@@ -21,15 +21,15 @@ def extract_boundary_lines(xx, yy, zz):
     return xs, ys
 
 # Parse command-line arguments
-parser = argparse.ArgumentParser(description="Launch the Bokeh server with an HDF5 file, this plot is to display changes in model behavior over training step.")
+parser = argparse.ArgumentParser(description="Launch the Bokeh server with an HDF5 file.")
 parser.add_argument("--file", type=str, required=True, help="Path to the HDF5 file")
-parser.add_argument("--output", type=str, required=False, help="If specified filename, while running on python not bokeh serve, the html will be saved in ./output")
 args = parser.parse_args()
 
 # Load the HDF5 file
 h5_file = args.file
 
 # Check if the file has an .h5 extension
+h5_file = args.file
 if not h5_file.lower().endswith(".h5"):
     print(f"Error: The input file '{h5_file}' is not an HDF5 (.h5) file.")
     sys.exit(1)
@@ -38,10 +38,6 @@ if not h5_file.lower().endswith(".h5"):
 if not os.path.isfile(h5_file):
     print(f"Error: The file '{h5_file}' does not exist.")
     sys.exit(1)
-
-if args.output is not None:
-    os.makedirs('./output', exist_ok=True)
-    output_file(filename=f"./output/{args.output}.html", title="Static HTML file", mode="inline")
 
 with h5py.File(h5_file, "r") as f:
     # Read config (if needed for any parameters, e.g., max_steps)
@@ -62,6 +58,8 @@ with h5py.File(h5_file, "r") as f:
     bpe_scores = [f[f"scores/step_{step}"]["bpe"][()] for step in range(total_steps)]
     bls_scores = [f[f"scores/step_{step}"]["bls"][()] for step in range(total_steps)]
     softmax_deviation = [f[f"scores/step_{step}"]["softmax_deviations"][()] for step in range(total_steps)]
+    marginal_vars = [f[f"scores/step_{step}"]["average_marginal"][()] for step in range(total_steps)]
+    lambdas = [f[f"scores/step_{step}"]["average_lambda"][()] for step in range(total_steps)]
 
     # Extract decision boundary data
     xx = [f[f"scores/step_{step}"]["decision_boundary"]["xx"][:] for step in range(total_steps)]
@@ -75,7 +73,6 @@ with h5py.File(h5_file, "r") as f:
 colors = ["blue", "green"]
 marker = ["circle", "square"]
 
-
 xs = []
 ys = []
 for step in range(total_steps):
@@ -87,16 +84,6 @@ for step in range(total_steps):
     boundary_x, boundary_y = extract_boundary_lines(xx_step, yy_step, zz_step)
     xs.append(boundary_x)
     ys.append(boundary_y)
-
-shared_resource = ColumnDataSource(data={
-    "step": list(range(total_steps)),
-    "bpe": bpe_scores,
-    "bls": bls_scores,
-    "sensitivities": sensitivity_scores,
-    "softmax_deviations": softmax_deviation,
-    "xs": xs,
-    "ys": ys,
-})
 
 # Prepare the shared sources
 shared_source = ColumnDataSource(data={
@@ -110,30 +97,45 @@ shared_source = ColumnDataSource(data={
     "size": [6] * len(y_train),
     "bpe": bpe_scores[0],
     "bls": bls_scores[0],
+    "average_marginal_vars": marginal_vars[0],
+    "average_lambda": lambdas[0],
     "sensitivities": sensitivity_scores[0],
     "softmax_deviations": softmax_deviation[0],
 })
 
+shared_resource = ColumnDataSource(data={
+    "step": list(range(total_steps)),
+    "xs": xs,
+    "ys": ys,
+    "Z": Z,
+    "bpe": bpe_scores,
+    "bls": bls_scores,
+    "average_marginal_vars": marginal_vars,
+    "average_lambda": lambdas,
+    "sensitivities": sensitivity_scores,
+    "softmax_deviations": softmax_deviation,
+})
+
 # Initialize visualizers
-sensitivityvisualizer = EvolvingSensitivityVisualizer(shared_source)
-memorymapvisualizer = EvolvingMemoryMapVisualizer(shared_source)
+sensitivityvisualizer = EvolvingSensitivityVisualizer(shared_source, True)
+memorymapvisualizer = EvolvingMemoryMapVisualizer(shared_source, True)
 boundaryvisualizer = EvolvingBoundaryVisualizer(
     shared_source,
     shared_resource,
     log_step,
     colors,
     total_batch,
-    max_steps=total_steps - 1
+    max_steps=total_steps - 1,
+    show_lambda=True
 )
+variancelambdaplot = VarianceLambdaPlot(shared_source)
 
 # Layout
 boundary_layout = column(boundaryvisualizer.get_layout(), width=575, height=575)
 memory_layout = column(memorymapvisualizer.get_layout(), width=600)
 sensitivity_layout = column(sensitivityvisualizer.get_layout(), width=450)
+variancelambda_layout = column(variancelambdaplot.get_layout(), width=450)
 
-layout = row(boundary_layout, memory_layout, sensitivity_layout)
+layout = row(boundary_layout, memory_layout, variancelambda_layout)
 
 curdoc().add_root(layout)
-
-if args.output is not None:
-    save(layout)

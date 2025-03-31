@@ -19,15 +19,20 @@ from lib.models import get_model
 from ivon import IVON as IBLR
 
 class DecisionBoundaryVisualizer:
-    def __init__(self, model, optim, scheduler, epoch, shared_source):
-        self.model = model
+    def __init__(self, shared_source, config):
+
+        self.input_size = config.get("input_size")
+        self.nc = config.get("nc")
+        self.model_name = config.get("model")
+        self.device = config.get("device")
+        self.optimizer = config.get("optimizer")
+        self.optim_param = config.get("optimizer_params")
+        self.max_epochs = config.get("max_epochs")
+        self.loss_criterion = config.get("loss_criterion")
+        self.n_retrain = config.get("n_retrain")
         self.source = shared_source
 
-        self.optim = optim
-        self.scheduler = scheduler
-        self.epoch = epoch
-
-        self.X = np.column_stack([self.source.data[feature] for feature in self.source.data if feature not in ['id', 'class', 'color', 'marker', 'estimated_deviation', 'true_deviation', 'bpe', 'bls']])
+        self.X = np.column_stack([self.source.data[feature] for feature in self.source.data if feature in ['x', 'y']])
         self.y = self.source.data['class']
 
         self.classes = np.unique(self.y) 
@@ -61,18 +66,16 @@ class DecisionBoundaryVisualizer:
             return None, None, None
         else:
 
-            input_size = 2
-            nc = 2
-            self.model = get_model('small_mlp', nc, input_size, 'cuda', 1)
-            optim = IBLR(self.model.parameters(), lr=2, mc_samples=4, ess=800, weight_decay=1e-3,
-                                beta1=0.9, beta2=0.99999, hess_init=0.9)
-            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=30)
+            self.model = get_model(self.model_name, self.nc, self.input_size, self.device, 1)
+            optim = IBLR(self.model.parameters(), lr=self.optim_param['lr'], mc_samples=4, ess=self.n_retrain, weight_decay=1e-3,
+                                beta1=0.9, beta2=0.99999, hess_init=self.optim_param['hess_init'])
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optim, T_max=self.max_epochs)
 
             self.message_div.text = ""
-            criterion = nn.CrossEntropyLoss(reduction='mean').to('cuda')
-            ds_train, ds_test, transform_train = get_dataset('MOON', return_transform=True, noise=0.2)
-            trainloader = get_quick_loader(DataLoader(ds_train, batch_size=256), device='cuda') # training
-            self.model, _ = train_model(self.model, criterion, self.optim, self.scheduler, trainloader, self.epoch, 799, 60, 'cuda', False)
+            criterion = nn.CrossEntropyLoss().to(self.device)
+            ds_train = TensorDataset(torch.tensor(X, dtype=torch.float32), torch.tensor(y, dtype=torch.long))
+            trainloader = get_quick_loader(DataLoader(ds_train, batch_size=256, shuffle=False), device=self.device) # training
+            self.model, _ = train_model(self.model, criterion, optim, scheduler, trainloader, self.max_epochs, self.n_retrain, None, self.device)
             self.model.eval()
             
             x_min, x_max = self.X[:, 0].min() - 1, self.X[:, 0].max() + 1
@@ -80,10 +83,15 @@ class DecisionBoundaryVisualizer:
             xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.01), 
                                  np.arange(y_min, y_max, 0.01))
             
-            grid = [xx.ravel(), yy.ravel()]
-            grid = torch.tensor(grid, dtype=torch.float32).to('cuda')
-            zz = self.model(grid)
-            zz = zz.reshape(xx.shape)
+            grid = np.c_[xx.ravel(), yy.ravel()]
+            grid = torch.tensor(grid, dtype=torch.float32).to(self.device)
+            
+            with torch.no_grad():
+                logits = self.model(grid)
+            
+            probabilities = torch.softmax(logits, dim=1)
+            zz = torch.argmax(probabilities, dim=1)
+            zz = zz.cpu().numpy().reshape(xx.shape)
             
             return xx, yy, zz
 

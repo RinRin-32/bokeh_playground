@@ -11,7 +11,8 @@ class SensitivityVisualizer:
         # Set up the figure
         p = figure(title="Sensitivity Visualization",
                    width=600, height=600,
-                   tools='tap,box_select,box_zoom,reset,pan')
+                   tools='tap,box_select,box_zoom,reset,pan',
+                   active_drag='box_select')
         p.xaxis.axis_label = 'True Deviation'
         p.yaxis.axis_label = 'Estimated Deviation'
 
