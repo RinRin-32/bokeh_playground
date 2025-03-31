@@ -4,8 +4,10 @@ import numpy as np
 from bokeh.plotting import figure
 
 class LinePlot:
-    def __init__(self, shared_source):
+    def __init__(self, shared_source, min_x, max_x):
         self.source = shared_source
+        self.min_x = min_x
+        self.max_x = max_x
 
         self.plot = self.create_plot()
         
@@ -13,7 +15,8 @@ class LinePlot:
         p = figure(height=100,
                            width=600,
                            title="Single Axis Plot",
-                           tools="")
+                           tools="",
+                           x_range=(self.min_x-1, self.max_x+1))
         p.yaxis.visible = False
         p.xaxis.axis_line_color = None
         p.xaxis.major_tick_line_color = None

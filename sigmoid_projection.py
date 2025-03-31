@@ -27,6 +27,8 @@ parser = argparse.ArgumentParser(description="Launch the Bokeh server with an HD
 parser.add_argument("--file", type=str, required=True, help="Path to the HDF5 file")
 parser.add_argument("--output", type=str, required=False, help="If specified filename, while running on python not bokeh serve, the html will be saved in ./output")
 parser.add_argument("--scale_factor", type=int, default=3, help="Scale plotting of influence exponentially, default set at 3")
+parser.add_argument("--sigmoid", action="store_true", help="Plot this plot with a sigmod")
+parser.add_argument("--no-sigmoid", dest="sigmoid", action="store_false", help="Plot the magnitude of the noise instead")
 
 args = parser.parse_args()
 
@@ -122,20 +124,26 @@ shared_source = ColumnDataSource(data={
 })
 
 boundary = LSBoundaryVisualizer(shared_source, shared_resource, max_step, colors, total_batches, mode='Step', sig_projection=True)
-projection = LinePlot(shared_source)
+projection = LinePlot(shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in))
 sigmoid = ProjectionPlot(shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in))
-barplot = BarProjectionPlot(shared_source)
+barplot = BarProjectionPlot(shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in))
 
 boundary_layout = column(boundary.get_layout())
 sigmoid_layout = column(sigmoid.get_layout())
 projection_layout = column(projection.get_layout())
 barplot_layout = column(barplot.get_layout())
 
-layout = row(
-    boundary_layout, 
-    #column(sigmoid_layout,projection_layout), 
-    column(barplot_layout,projection_layout)
-    )
+
+if args.sigmoid:
+    layout = row(
+        boundary_layout, 
+        column(sigmoid_layout,projection_layout), 
+        )
+else:
+    layout = row(
+        boundary_layout, 
+        column(barplot_layout,projection_layout)
+        )
 
 curdoc().add_root(layout)
 

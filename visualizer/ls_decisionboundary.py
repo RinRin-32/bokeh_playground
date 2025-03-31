@@ -26,7 +26,7 @@ class LSBoundaryVisualizer:
         y_min, y_max = self.X[:, 1].min() - 1, self.X[:, 1].max() + 1
 
         self.plot = figure(
-            title="Induced Noise from Adaptive Variation Learning",
+            title="Induced Noise from Adaptive Variational Learning",
             width=600, height=600,
             #sizing_mode="scale_both",
             x_range=(x_min, x_max),

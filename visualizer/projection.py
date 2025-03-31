@@ -21,7 +21,7 @@ class ProjectionPlot:
         p.xaxis.major_tick_line_color = None
         p.xaxis.minor_tick_line_color = None
 
-        x_sigmoid = np.linspace(self.min-1, self.max+1, 100)
+        x_sigmoid = np.linspace(self.min+0.1, self.max-0.1, 100)
         sigmoid_y = 1 / (1 + np.exp(-x_sigmoid))
         p.line(x_sigmoid, sigmoid_y, color="blue", line_width=2, legend_label="Sigmoid")
 
