@@ -21,7 +21,7 @@ class EvolvingLabelNoisePlot:
         self.play_button = Button(label="Play", button_type="success")
 
         self.plot = self.create_plot()
-        self.image_display = self.create_image_display()
+        self.image_displays = self.create_image_displays()
 
         self.setup_callbacks()
 
@@ -41,7 +41,7 @@ class EvolvingLabelNoisePlot:
             tools="reset,save",
             title=f"{self.plot_name} Label Noise Distribution",
             x_axis_label="Sorted Sample By Noise", y_axis_label=r"Label Noise ||ε||₂",
-            x_range=(-10, self.n_sample),
+            x_range=((-1*0.05*self.n_sample), self.n_sample),
             y_range=(self.y_min-0.05, self.y_max)
         )
 
@@ -51,13 +51,13 @@ class EvolvingLabelNoisePlot:
         p.yaxis.axis_label_text_font_size = "20pt"
 
         # Create a source for the rectangles (boxes)
-        box_source = ColumnDataSource(data=dict(
-            left=[0, 800], right=[100, 1000],  # X positions for two boxes
-            bottom=[0.05, -0.01], top=[0.5, 0.2], color=['yellow', 'blue']  # Y positions for two boxes
+        self.box_source = ColumnDataSource(data=dict(
+            left=[(-1*0.05*self.n_sample), int(self.n_sample*0.9)], right=[int(self.n_sample*0.1), self.n_sample],  # X positions for two boxes
+            bottom=[0.5*self.y_max, -0.01], top=[self.y_max, 0.2*self.y_max], color=['yellow', 'blue'], name=['High Noise', 'Low Noise']  # Y positions for two boxes
         ))
 
         quad_renderer = p.quad(left="left", right="right", bottom="bottom", top="top", 
-                       source=box_source, fill_alpha=0.3, color="color")
+                       source=self.box_source, fill_alpha=0.3, color="color")
 
         # Add BoxEditTool
         box_edit = BoxEditTool(renderers=[quad_renderer])
@@ -65,31 +65,99 @@ class EvolvingLabelNoisePlot:
         p.add_tools(box_edit)
 
         # Scatter plot
-        p.scatter("x", "y", source=self.shared_source, size="size", color="color", 
+        p.scatter("x", "y", source=self.shared_source, size="size", color="color",
                 legend_label="Data", fill_alpha=0.6, line_color='black')
 
         return p
 
-    def create_image_display(self):
-        return Div(
-            text="<h3>Selected Images:</h3>",
-            sizing_mode="stretch_width", height=500,
-            stylesheets=[""" .scroll-box { overflow-y: auto; max-height: 500px; padding: 10px; } """],
-            css_classes=["scroll-box"]
-        )
+    def create_image_displays(self):
+        return {
+            "yellow": Div(text="<h3>High Noise Examples:</h3>",
+                           width=400, height=500,
+                           stylesheets=[".scroll-box { overflow-y: auto; max-height: 500px; padding: 0px; }"],
+                           css_classes=["scroll-box"]
+                          ),
+            "blue": Div(text="<h3>Low Noise Examples:</h3>",
+                         width=400, height=500,
+                         stylesheets=[".scroll-box { overflow-y: auto; max-height: 500px; padding: 0px; }"],
+                         css_classes=["scroll-box"]
+                        )
+        }
 
     def setup_callbacks(self):
         self.step_slider.js_on_change("value", CustomJS(args={"original": self.shared_resource,
-                                                              "intermediate": self.shared_source},
+                                                              "source": self.shared_source,  
+                                                              "image_displays": self.image_displays,
+                                                              "box_source": self.box_source,
+                                                              "slider": self.step_slider
+                                                              },
         code="""
             var step = cb_obj.value;
             var shared_data = original.data;
-            
-            intermediate.data["y"] = shared_data["y"][step];
-            intermediate.data["x"] = shared_data["x"][step];
-            //intermediate.data["noise_chart"] = shared_data["noise_chart"][step];
 
-            intermediate.change.emit();
+            source.data["y"] = shared_data["y"][step];
+            source.data["x"] = shared_data["x"][step];
+
+            var images = source.data["img"];
+            var labels = source.data["label"];
+            var x_values = source.data["x"];
+            var y_values = source.data["y"];
+            var indices = x_values.length;
+
+            var box_data = box_source.data;
+            var box_colors = box_data["color"];
+            var lefts = box_data["left"];
+            var rights = box_data["right"];
+            var bottoms = box_data["bottom"];
+            var tops = box_data["top"];
+
+            // Create dictionaries to group images by label for each color category
+            var images_by_box = {
+                "yellow": {},
+                "blue": {}
+            };
+
+            for (var i = 0; i < indices; i++) {
+                var x = x_values[i];
+                var y = y_values[i];
+                var label = labels[i];
+                var imgTag = "<img src='data:image/png;base64," + images[i] + "' width='64' height='64'>";
+
+                for (var j = 0; j < box_colors.length; j++) {
+                    if (x >= lefts[j] && x <= rights[j] && y >= bottoms[j] && y <= tops[j]) {
+                        var color = box_colors[j];
+
+                        // Initialize label group if not present
+                        if (!(label in images_by_box[color])) {
+                            images_by_box[color][label] = [];
+                        }
+
+                        // Add image to corresponding label group
+                        if (images_by_box[color][label].length < 4){
+                            images_by_box[color][label].push(imgTag);
+                        }
+                    }
+                }
+            }
+
+            // Function to generate HTML for a category
+            function generate_html(images_by_label, title) {
+                var html = "<h3>" + title + "</h3>";
+                
+                var sortedLabels = Object.keys(images_by_label).sort();
+                sortedLabels.forEach(function(label) {
+                    html += "<div style='margin-bottom:10px; max-width: 500;'><b>" + "</b><br>";
+                    html += "<div style='display: flex; flex-wrap: wrap; gap: 1px;'>" + images_by_label[label].join("") + "</div></div>";
+                });
+
+                return html;
+            }
+
+            // Update image display text
+            image_displays["yellow"].text = '<div class="scroll-box">' + generate_html(images_by_box["yellow"], "High Noise Examples") + '</div>';
+            image_displays["blue"].text = '<div class="scroll-box">' + generate_html(images_by_box["blue"], "Low Noise Examples") + '</div>';
+
+            source.change.emit();
         """))
 
         self.play_button.js_on_event("button_click", CustomJS(args={"slider": self.step_slider,
@@ -116,7 +184,7 @@ class EvolvingLabelNoisePlot:
 
         # Trigger selection when data updates
         self.shared_source.js_on_change("data", CustomJS(args={
-            "source": self.shared_source, "image_display": self.image_display,
+            "source": self.shared_source, "image_display": self.image_displays,
             "selection_box": self.selection_box_source
         }, code="""
             var indices = source.selected.indices;
@@ -157,7 +225,7 @@ class EvolvingLabelNoisePlot:
 
         # Also trigger when selection changes
         self.shared_source.selected.js_on_change("indices", CustomJS(args={
-            "source": self.shared_source, "image_display": self.image_display,
+            "source": self.shared_source, "image_display": self.image_displays,
             "selection_box": self.selection_box_source
         }, code="""
             var indices = source.selected.indices;
@@ -197,4 +265,5 @@ class EvolvingLabelNoisePlot:
         """))
 
     def get_layout(self):
-        return row(column(self.plot, self.step_slider, self.play_button), self.image_display)
+        return row(column(self.plot, self.step_slider, self.play_button),
+                   row(self.image_displays["yellow"], self.image_displays["blue"]))

@@ -1,4 +1,4 @@
-from visualizer.evolving_ls import EvolvingLabelNoisePlot
+from visualizer.evolving_ls_box import EvolvingLabelNoisePlot
 from visualizer.test_nll import TestNLLAnimation
 import h5py
 from bokeh.plotting import curdoc, output_file, save
@@ -106,6 +106,8 @@ parser.add_argument("--compress", action="store_true", help="Enable random sampl
 parser.add_argument("--no-compress", dest="compress", action="store_false", help="Disable random sampling of images")
 parser.add_argument("--n_sample", type=int, default=1000, help="Number of images selected for plot if compressing, 1000 by default")
 parser.add_argument("--output", type=str, required=False, help="If specified filename, while running on python not bokeh serve, the html will be saved under ./output")
+parser.add_argument("--image_subset", action="store_true", help="Include a subset")
+parser.add_argument("--no_image_subset", dest="image-subset", action="store_false", help="does not include the image subset")
 args = parser.parse_args()
 
 if args.output is not None:
@@ -205,6 +207,7 @@ for epoch_noises in all_induced_noises:  # Each epoch
     normalized_induced_noises.append(normalized_noises.tolist())  # Store as list
 
 
+
 noise_barcharts = []
 induced_noise = []
 for epoch in range(len(normalized_induced_noises)):
@@ -212,9 +215,9 @@ for epoch in range(len(normalized_induced_noises)):
     noise = []
     for images in range(len(normalized_induced_noises[epoch])):
         noise.append(normalized_induced_noises[epoch][images])
-        epoch_chart.append(generate_noise_barchart(normalized_induced_noises[epoch][images]))
+        #epoch_chart.append(generate_noise_barchart(normalized_induced_noises[epoch][images]))
     induced_noise.append(noise)
-    noise_barcharts.append(epoch_chart)
+    #noise_barcharts.append(epoch_chart)
 
 shared_resource = ColumnDataSource(data={
     "y": all_epoch_noises,
@@ -222,7 +225,7 @@ shared_resource = ColumnDataSource(data={
     "estimated_nll": estimated_nll,
     "epoch": list(range(max_epoch)),
     "x": relative_positioning,
-    "noise_chart": noise_barcharts,
+    #"noise_chart": noise_barcharts,
 })
 
 #get all the index here somehow to reduce computation and checks required done in the jscallbacks
@@ -231,11 +234,11 @@ shared_source = ColumnDataSource(data={
     "label": labels.astype(str),
     "size": [6] * len(labels),
     "alpha": [1.0] * len(labels),
-    "color": ['blue'] * len(labels),
+    "color": ['white'] * len(labels),
     "marker": ['circle'] * len(labels),
     "y": all_epoch_noises[0],
     "x": relative_positioning[0],
-    "noise_chart": noise_barcharts[0],
+    #"noise_chart": noise_barcharts[0],
 })
 
 epoch_counter = ColumnDataSource(data={"epoch": [0]})
@@ -254,7 +257,7 @@ for i in range(len(subsample_noise_epoch)):
 subsample_intermediate = subsample_source[0]
 max_epoch-=1
 
-evolving_ls = EvolvingLabelNoisePlot(shared_source, dataset, y_range, len(all_epoch_noises[0]))
+evolving_ls = EvolvingLabelNoisePlot(shared_source, shared_resource, dataset, y_range, len(all_epoch_noises[0]), max_epoch)
 nll_plot = TestNLLAnimation(shared_source, shared_resource, max_epoch, subsample_intermediate, subsample_source)
 image_set = ImageSet(subsample_intermediate, subsample_image)
 
@@ -262,7 +265,17 @@ ls_layout = column(evolving_ls.get_layout(), sizing_mode="stretch_width")
 nll_layout = column(nll_plot.get_layout(), sizing_mode="stretch_height")
 image_layout = column(image_set.get_layout(), sizing_mode="stretch_both")
 
-layout = column(row(ls_layout), row(nll_layout, image_layout), sizing_mode="stretch_both")
+if args.image_subset:
+    layout = column(
+        row(ls_layout), 
+        row(nll_layout, 
+            image_layout
+            ), sizing_mode="stretch_both")
+else:
+    layout = column(
+        row(ls_layout), 
+        #row(nll_layout), 
+        sizing_mode="stretch_both")
 
 curdoc().add_root(layout)
 
