@@ -5,7 +5,7 @@ import matplotlib
 from bokeh.plotting import figure
 
 class TestNLLAnimation:
-    def __init__(self, shared_source, shared_resource, max_epoch, subsample_intermediate, subsample_source, default_color='blue'):
+    def __init__(self, shared_source, shared_resource, max_epoch, subsample_intermediate, subsample_source, default_color='white'):
         self.source = shared_source
         self.shared_resource = shared_resource
         self.max_epoch = max_epoch
@@ -116,7 +116,7 @@ class TestNLLAnimation:
             }
             intermediate.data["y"] = shared_data["y"][step];
             intermediate.data["x"] = shared_data["x"][step];
-            intermediate.data["noise_chart"] = shared_data["noise_chart"][step];
+            //intermediate.data["noise_chart"] = shared_data["noise_chart"][step];
 
             for (let i = 0; i < subsample_intermediate.length; i++) {
                 subsample_intermediate[i].data = subsample_source[step][i].data;  // Update bar chart data
@@ -173,5 +173,5 @@ class TestNLLAnimation:
         return column(
             self.plot, 
             row(Spacer(width=30), self.step_slider, self.play_button, self.clear_button),
-            row(Spacer(width=30), Div(text="Tracker Colors:"), *self.tracker_buttons)
+            #row(Spacer(width=30), Div(text="Tracker Colors:"), *self.tracker_buttons)
         )

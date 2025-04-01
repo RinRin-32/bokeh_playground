@@ -1,4 +1,4 @@
-from bokeh.models import ColumnDataSource, CustomJS, Div, HoverTool
+from bokeh.models import ColumnDataSource, CustomJS, Div, HoverTool, TapTool
 from bokeh.plotting import figure
 from bokeh.layouts import row
 
@@ -22,33 +22,40 @@ class EvolvingLabelNoisePlot:
 
         self.setup_callbacks()
 
+        taptool = self.plot.select(dict(type=TapTool))
+        taptool.callback = CustomJS(args=dict(source=self.shared_source), code="""
+            var indices = source.selected.indices;
+            if (indices.length > 1) {
+                source.selected.indices = [indices[indices.length - 1]];  // Keep only the last selected point
+                source.change.emit();  // Update the selection
+            }
+        """)
+
     def create_plot(self):
         p = figure(
             width=800, height=500,
-            tools="lasso_select, reset,save,box_select",
+            tools="tap,reset,save,box_select",
             active_drag='box_select',
             title=f"{self.plot_name} Label Noise Distribution",
             x_axis_label="Sorted Sample By Noise", y_axis_label=r"Label Noise ||ε||₂",
-            x_range=(0, self.n_sample),
-            y_range=(self.y_min, self.y_max))
+            x_range=(-10, self.n_sample),
+            y_range=(self.y_min-0.05, self.y_max))
         
         p.title.text_font_size = "25px"
         p.title.align = 'center'
         p.yaxis.major_label_text_font_size = "15pt"
         p.yaxis.axis_label_text_font_size = "20pt"
 
-        p.scatter("x", "y", source=self.shared_source, size=6, color="color", legend_label="Data", fill_alpha=0.6)
+        p.scatter("x", "y", source=self.shared_source, size="size", color="color", legend_label="Data", fill_alpha=0.6, line_color='black')
 
         hover = HoverTool(tooltips="""
                 <div>
                     <img src="data:image/png;base64,@img" width="28" height="28"></img>
                     <br>
                     <b>Label:</b> @label
-                    <br>
-                    <img src="data:image/png;base64,@noise_chart" width="150" height="100"></img>
                 </div>
         """)
-        p.add_tools(hover)
+       # p.add_tools(hover)
 
         return p
     
@@ -57,7 +64,7 @@ class EvolvingLabelNoisePlot:
             var indices = source.selected.indices;
             var images = source.data["img"];
             var labels = source.data["label"];
-            var noise_charts = source.data["noise_chart"];
+            //var noise_charts = source.data["noise_chart"];
             var html = "";
 
             if (indices.length === 0) {
@@ -70,8 +77,9 @@ class EvolvingLabelNoisePlot:
                 for (var i = 0; i < indices.length; i++) {
                     var label = labels[indices[i]];
                     var imgTag = "<img src='data:image/png;base64," + images[indices[i]] + "' width='64' height='64'>";
-                    var noiseChartTag = "<img src='data:image/png;base64," + noise_charts[indices[i]] + "' width='150' height='100'>";
-                    var wrappedTag = "<span style='display: inline-block; margin: 5px;'>" + imgTag + noiseChartTag + "</span>";
+                    //var noiseChartTag = "<img src='data:image/png;base64," + noise_charts[indices[i]] + "' width='150' height='100'>";
+                    //var wrappedTag = "<span style='display: inline-block; margin: 5px;'>" + imgTag + noiseChartTag + "</span>";
+                    var wrappedTag = "<span style='display: inline-block; margin: 5px;'>" + imgTag + "</span>";
 
                     if (!(label in groupedImages)) {
                         groupedImages[label] = [];

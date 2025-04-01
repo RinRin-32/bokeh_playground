@@ -1,18 +1,25 @@
-from bokeh.models import Button, CustomJS, Slider, ColumnDataSource, Div
-from bokeh.layouts import column
+from bokeh.models import Button, CustomJS, Slider, ColumnDataSource, Div, TapTool
+from bokeh.layouts import column, row
 import numpy as np
 from bokeh.plotting import figure
+import matplotlib
 
 class LSBoundaryVisualizer:
-    def __init__(self, shared_source, shared_resource, max_step, colors, total_batches, mode='Step', sig_projection=False):
+    def __init__(self, shared_source, shared_resource, max_step, colors, total_batches, mode='Step', sig_projection=False, barplot_shared_source=None, barplot_shared_resource=None):
         self.source = shared_source
         self.shared_resource = shared_resource
         self.max_step = max_step
         self.max_epoch = total_batches
         self.colors = colors
-        self.original_colors = self.source.data['color'].copy() # Store original colors
+        self.original_colors = shared_source.data['color'].copy() # Store original colors
         self.total_batches = total_batches
         self.toggle = sig_projection
+        self.barplot_source = barplot_shared_source
+        self.barplot_resource = barplot_shared_resource
+        self.barmode = (self.barplot_source != None)
+
+        self.tracker_colors = ["#d55e00", "#cc79a7", "#0072b2", "#f0e442", "#009e73"]
+        self.tracker_colors_hex = [matplotlib.colors.rgb2hex(c) for c in self.tracker_colors]  # Store as hex
 
         self.X = np.column_stack([self.source.data[feature] for feature in self.source.data if feature in ['x', 'y']])
         self.y = self.source.data['class']
@@ -31,10 +38,9 @@ class LSBoundaryVisualizer:
             #sizing_mode="scale_both",
             x_range=(x_min, x_max),
             y_range=(y_min, y_max),
-            tools="tap, box_select, reset, pan, wheel_zoom",
+            tools="tap, reset, pan, wheel_zoom",
             active_drag="pan",
             active_scroll="wheel_zoom"
-            #tools=""
         )
 
         initial_xs = shared_resource.data["xs"][0]
@@ -45,6 +51,51 @@ class LSBoundaryVisualizer:
         self.plot.multi_line(xs="xs", ys="ys", source=self.boundary_source, line_width=2, color="black")
 
         self.step_slider = Slider(start=0, end=self.max_step, value=0, step=1, title=mode)
+
+        # Tracker buttons setup
+        self.tracker_buttons = []
+        for i, color in enumerate(self.tracker_colors_hex):
+            style_btn = f"""
+            .bk-btn {{
+                color: {color};
+                background-color: {color};
+            }}
+            .bk-btn:hover {{
+                background-color: {color};
+                opacity: 0.8; /* Optional: Adds a slight transparency effect on hover */
+            }}
+            """
+            
+            button = Button(label=f"", width=50, height=50, stylesheets=[style_btn], css_classes=[f'color-button-{i}'])
+            button_callback = CustomJS(args={"source": self.source, "color": color, "all_color": self.tracker_colors}, code="""
+                var selected_indices = source.selected.indices;
+                if (selected_indices.length == 0) {
+                    alert("No points selected to apply color.");
+                    return;
+                }
+
+                var new_data = source.data;
+                for (var idx = 0; idx < new_data["color"].length; idx++) {
+                    if (selected_indices.includes(idx)) {
+                        new_data["color"][idx] = color;
+                        new_data["selection"][idx] = 15
+                        new_data["bar_alpha"][idx] = 1.0
+                    }
+                }
+                source.change.emit();
+            """)
+            button.js_on_click(button_callback)
+            self.tracker_buttons.append(button)
+
+        taptool = self.plot.select(dict(type=TapTool))
+        taptool.callback = CustomJS(args=dict(source=self.source), code="""
+            var indices = source.selected.indices;
+            if (indices.length > 1) {
+                source.selected.indices = [indices[indices.length - 1]];  // Keep only the last selected point
+                source.change.emit();  // Update the selection
+            }
+        """)
+
         self.setup_callbacks()
 
     def setup_callbacks(self):
@@ -53,7 +104,11 @@ class LSBoundaryVisualizer:
                                                                "boundary_source": self.boundary_source,
                                                                "epoch_display": self.epoch_display,
                                                                "total_batches": self.total_batches,
-                                                               "toggle": self.toggle}, 
+                                                               "toggle": self.toggle,
+                                                               "barplot": self.barmode,
+                                                               "bar_resource": self.barplot_resource,
+                                                               "bar_source": self.barplot_source
+                                                               }, 
         code="""
             var step = cb_obj.value;
             var shared_data = shared_resource.data;
@@ -71,6 +126,12 @@ class LSBoundaryVisualizer:
                     source.data["logits"] = shared_data["logits"][step_index];
                     source.data["sig_in"] = shared_data["sig_in"][step_index];
                     source.data["noise"] = shared_data["noise"][step_index];
+                }
+                
+                if (barplot){
+                    bar_source.data["noise"] = bar_resource.data["noise"][step_index];
+                    bar_source.data["sig_in"] = bar_resource.data["sig_in"][step_index];
+                    bar_source.change.emit();
                 }
 
                 source.change.emit();
@@ -112,21 +173,18 @@ class LSBoundaryVisualizer:
             }
         """))
 
-        self.source.selected.js_on_change('indices', CustomJS(args={'source': self.source, 'original_colors': self.original_colors}, code="""
-            const selected_indices = source.selected.indices;
-            const new_colors = source.data['color'].slice(); // Create a copy of the current colors
-            for (let i = 0; i < selected_indices.length; i++) {
-                new_colors[selected_indices[i]] = 'red';
+        self.clear_selection_button.js_on_click(CustomJS(args={'source': self.source}, code="""
+            var data = source.data;
+            var color = "white";  // Set the color to white
+            // Set all points to white
+            for (var i = 0; i < data['color'].length; i++) {
+                data['color'][i] = color;
+                data['bar_alpha'][i] = 0;
             }
-            source.data['color'] = new_colors;
-            source.change.emit();
-        """))
-
-        self.clear_selection_button.js_on_click(CustomJS(args={'source': self.source, 'original_colors': self.original_colors}, code="""
-            source.data['color'] = original_colors;
-            source.selected.indices = [];
-            source.change.emit();
+            source.selected.indices = [];  // Clear selection
+            source.change.emit();  // Notify the source to update the plot
         """))
 
     def get_layout(self):
-        return column(self.plot, self.epoch_display, self.step_slider, self.play_pause_button, self.clear_selection_button)
+        return column(self.plot, self.epoch_display, self.step_slider, self.play_pause_button, self.clear_selection_button,
+                      row(Div(text="Tracker Colors:"), *self.tracker_buttons))

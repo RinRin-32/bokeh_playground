@@ -29,7 +29,7 @@ class ImageSet:
 
         # Add hover tool
         hover = HoverTool(tooltips=[("Class", "@categories"), ("Noise", "@values")])
-        p.add_tools(hover)
+        #p.add_tools(hover)
 
         p.xgrid.grid_line_color = None
         p.y_range.start = 0

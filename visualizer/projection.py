@@ -12,7 +12,7 @@ class ProjectionPlot:
         self.plot = self.create_plot()
         
     def create_plot(self):
-        p = figure(height=600,
+        p = figure(height=200,
                            width=600,
                            title="Sigmoid Plot",
                            tools="")
@@ -25,7 +25,7 @@ class ProjectionPlot:
         sigmoid_y = 1 / (1 + np.exp(-x_sigmoid))
         p.line(x_sigmoid, sigmoid_y, color="blue", line_width=2, legend_label="Sigmoid")
 
-        p.scatter("sig_in", "logits", source=self.source, size='size', color='color',  marker="marker", line_color='black')
+        p.scatter("sig_in", "logits", source=self.source, size='selection', color='color',  marker="marker", line_color='black')
         p.legend.location = "top_left"
 
         return p

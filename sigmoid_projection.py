@@ -12,7 +12,6 @@ import numpy as np
 from visualizer.ls_decisionboundary import LSBoundaryVisualizer
 from visualizer.projection import ProjectionPlot
 from visualizer.noise_bar import BarProjectionPlot
-from visualizer.lineplot import LinePlot
 
 
 def extract_boundary_lines(xx, yy, zz):
@@ -27,8 +26,6 @@ parser = argparse.ArgumentParser(description="Launch the Bokeh server with an HD
 parser.add_argument("--file", type=str, required=True, help="Path to the HDF5 file")
 parser.add_argument("--output", type=str, required=False, help="If specified filename, while running on python not bokeh serve, the html will be saved in ./output")
 parser.add_argument("--scale_factor", type=int, default=3, help="Scale plotting of influence exponentially, default set at 3")
-parser.add_argument("--sigmoid", action="store_true", help="Plot this plot with a sigmod")
-parser.add_argument("--no-sigmoid", dest="sigmoid", action="store_false", help="Plot the magnitude of the noise instead")
 
 args = parser.parse_args()
 
@@ -98,6 +95,28 @@ for epoch_noises in all_epoch_noises:
     scaled_alphas_list.append(alpha_assignments.tolist())
     scaled_sizes_list.append(size_assignments.tolist())
 
+num_regions = 24  # Define a fixed number of regions
+region_edges = np.linspace(np.min(sig_in), np.max(sig_in), num_regions + 1)
+region_centers = (region_edges[:-1] + region_edges[1:]) / 2  # Fixed bin centers
+
+region_means_list = []
+region_sig_in_list = []
+
+for epoch_noises, sig_in_epoch in zip(all_epoch_noises, sig_in):
+    region_means = np.zeros(num_regions)  # Initialize all bins to zero
+    region_counts = np.zeros(num_regions)  # Track number of points per bin
+
+    for i in range(num_regions):
+        region_mask = (sig_in_epoch >= region_edges[i]) & (sig_in_epoch < region_edges[i + 1])
+        
+        if np.any(region_mask):
+            region_means[i] = np.mean(epoch_noises[region_mask])
+            region_counts[i] = np.sum(region_mask)  # Count the number of points in this bin
+
+    region_means_list.append(region_means)
+    region_sig_in_list.append(region_centers)
+
+
 shared_resource = ColumnDataSource(data={
     "epoch": list(range(max_step)),
     "xs": xs,
@@ -120,30 +139,44 @@ shared_source = ColumnDataSource(data={
     "sig_in": sig_in[0],
     "fixed_axis": [0] * len(y_train),
     "logits": logits[0],
-    "noise": all_epoch_noises[0]
+    "noise": all_epoch_noises[0],
+    "selection": [6] * len(y_train),
+    "line_color": ['white'] * len(y_train),
+    "bar_alpha": [0] * len(y_train)
 })
 
-boundary = LSBoundaryVisualizer(shared_source, shared_resource, max_step, colors, total_batches, mode='Step', sig_projection=True)
-projection = LinePlot(shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in))
+all_barplot = ColumnDataSource(data={
+    "noise": region_means_list,
+    "sig_in": region_sig_in_list
+})
+
+current_barplot = ColumnDataSource(data={
+    "noise": region_means_list[0],
+    "color": ['white'] * len(region_means_list[0]),
+    "sig_in": region_sig_in_list[0]
+})
+
+min_y = np.min(region_means_list)
+max_y = np.max(region_means_list)
+
+boundary = LSBoundaryVisualizer(shared_source, shared_resource, max_step-1, colors, total_batches, mode='Step', sig_projection=True, barplot_shared_resource=all_barplot, barplot_shared_source=current_barplot)
+#projection = LinePlot(shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in))
 sigmoid = ProjectionPlot(shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in))
-barplot = BarProjectionPlot(shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in))
+barplot = BarProjectionPlot(current_barplot, shared_source, min_x=np.min(region_sig_in_list), max_x=np.max(region_sig_in_list), min_y=min_y, max_y=max_y)
 
 boundary_layout = column(boundary.get_layout())
 sigmoid_layout = column(sigmoid.get_layout())
-projection_layout = column(projection.get_layout())
+#projection_layout = column(projection.get_layout())
 barplot_layout = column(barplot.get_layout())
 
 
-if args.sigmoid:
-    layout = row(
-        boundary_layout, 
-        column(sigmoid_layout,projection_layout), 
-        )
-else:
-    layout = row(
-        boundary_layout, 
-        column(barplot_layout,projection_layout)
-        )
+layout = row(
+    boundary_layout, 
+    column(barplot_layout,
+           sigmoid_layout,
+           #projection_layout
+           ), 
+    )
 
 curdoc().add_root(layout)
 

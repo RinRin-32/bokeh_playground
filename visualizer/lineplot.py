@@ -21,7 +21,7 @@ class LinePlot:
         p.xaxis.axis_line_color = None
         p.xaxis.major_tick_line_color = None
         p.xaxis.minor_tick_line_color = None
-        p.scatter("sig_in", "fixed_axis", source=self.source, size='size', color='color',  marker="marker", line_color='black')
+        p.scatter("sig_in", "fixed_axis", source=self.source, size='selection', color='color',  marker="marker", line_color='black')
         return p
 
     def get_layout(self):
