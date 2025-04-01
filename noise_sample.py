@@ -184,12 +184,12 @@ y_max = max(np.max(noises) for noises in all_epoch_noises)
 
 # Store them as a list
 y_range = [y_min, y_max]
-
-new_all_epoch_noises = [np.append(all_epoch_noises[epoch][:50], all_epoch_noises[epoch][-50:]) for epoch in range(len(all_epoch_noises))]
-new_relative_positioning = [np.append(relative_positioning[epoch][:50], relative_positioning[epoch][-50:]) for epoch in range(len(relative_positioning))]
-new_img = image_base64_list[:50] + image_base64_list[-50:]
+'''
+new_all_epoch_noises = [np.append(all_epoch_noises[epoch][:2000], all_epoch_noises[epoch][-2000:]) for epoch in range(len(all_epoch_noises))]
+new_relative_positioning = [np.append(relative_positioning[epoch][:2000], relative_positioning[epoch][-2000:]) for epoch in range(len(relative_positioning))]
+new_img = image_base64_list[:2000] + image_base64_list[-2000:]
 labels = labels.astype(str)
-new_lab = np.append(labels[:50], labels[-50:])
+new_lab = np.append(labels[:2000], labels[-2000:])
 
 shared_resource = ColumnDataSource(data={
     "y": new_all_epoch_noises,
@@ -204,6 +204,68 @@ shared_source = ColumnDataSource(data={
     "y": new_all_epoch_noises[0],
     "x": new_relative_positioning[0],
 })
+'''
+
+# Filtering function: Get indices matching noise conditions
+def filter_indices(y_values, labels, threshold_high=0.1, max_samples=5):
+    high_noise_images_by_label = {}
+    low_noise_images_by_label = {}
+    selected_indices = []
+
+    for i, (y, label) in enumerate(zip(y_values, labels)):
+        if y > threshold_high:  # High noise
+            if label not in high_noise_images_by_label:
+                high_noise_images_by_label[label] = []
+            if len(high_noise_images_by_label[label]) < max_samples:
+                high_noise_images_by_label[label].append(i)
+                selected_indices.append(i)
+        elif y > 0:  # Low noise
+            if label not in low_noise_images_by_label:
+                low_noise_images_by_label[label] = []
+            if len(low_noise_images_by_label[label]) < max_samples:
+                low_noise_images_by_label[label].append(i)
+                selected_indices.append(i)
+
+    return sorted(set(selected_indices))  # Unique indices sorted
+
+# Apply filtering to each epoch
+filtered_indices_per_epoch = [filter_indices(all_epoch_noises[epoch], labels) for epoch in range(len(all_epoch_noises))]
+
+# Extract filtered values based on selected indices (Ensuring correct image indexing)
+new_all_epoch_noises = [
+    np.array(all_epoch_noises[epoch])[filtered_indices_per_epoch[epoch]]
+    for epoch in range(len(all_epoch_noises))
+]
+new_relative_positioning = [
+    np.array(relative_positioning[epoch])[filtered_indices_per_epoch[epoch]]
+    for epoch in range(len(relative_positioning))
+]
+new_images = [
+    np.array(image_base64_list)[filtered_indices_per_epoch[epoch]]
+    for epoch in range(len(all_epoch_noises))
+]
+new_labels = [
+    np.array(labels)[filtered_indices_per_epoch[epoch]]
+    for epoch in range(len(all_epoch_noises))
+]
+
+# Update shared_resource: Store images in the same structure as y and x
+shared_resource = ColumnDataSource(data={
+    "y": new_all_epoch_noises,
+    "epoch": list(range(len(new_all_epoch_noises))),
+    "x": new_relative_positioning,
+    "label": new_labels,
+    "img": new_images,  # Store images correctly matched with y
+})
+
+# Store first epoch's filtered data for JS callbacks
+shared_source = ColumnDataSource(data={
+    "img": new_images[0],
+    "label": new_labels[0].astype(str),
+    "y": new_all_epoch_noises[0],
+    "x": new_relative_positioning[0],
+})
+
 
 sample_display = Sample(shared_source, shared_resource, dataset, y_range, len(all_epoch_noises[0]), max_epoch)
 
