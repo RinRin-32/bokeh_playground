@@ -1,5 +1,6 @@
 from bokeh.models import ColumnDataSource, CustomJS, Div, Slider, Spacer
 from bokeh.layouts import column, row
+import numpy as np
 
 class Sample:
     def __init__(self, shared_source, shared_resource, plot_name, y_range, n_sample, max_epoch, default_color='white', display_mode='column'):
@@ -36,33 +37,43 @@ class Sample:
             "low_noise_images": Div(text="<h3>Low Label Noise Examples:</h3>", width=width, height=height, css_classes=["scroll-box"])
         }
 
+    
     def update_images(self):
-        # Initial image plotting (same logic as callback)
         shared_data = self.shared_resource.data
         images = self.shared_source.data["img"]
         labels = self.shared_source.data["label"]
-        x_values = self.shared_source.data["x"]
         y_values = self.shared_source.data["y"]
-        indices = len(x_values)
 
         high_noise_images_by_label = {}
         low_noise_images_by_label = {}
 
-        # Iterate through data points and sort by noise levels
-        for i in range(indices):
-            label = labels[i]
-            imgTag = "<img src='data:image/png;base64," + images[i] + "' width='32' height='32'>"
+        unique_labels = set(labels)  # Get unique labels
+
+        for label in unique_labels:
+            # Get indices for this label
+            label_indices = [i for i, lbl in enumerate(labels) if lbl == label]
             
-            if y_values[i] > 0.1:  # High noise
-                if label not in high_noise_images_by_label:
-                    high_noise_images_by_label[label] = []
-                if len(high_noise_images_by_label[label]) < 5:
-                    high_noise_images_by_label[label].append(imgTag)
-            elif y_values[i] > 0:  # Low noise
-                if label not in low_noise_images_by_label:
-                    low_noise_images_by_label[label] = []
-                if len(low_noise_images_by_label[label]) < 5:
-                    low_noise_images_by_label[label].append(imgTag)
+            # Sort by y_values within this label
+            label_indices.sort(key=lambda i: y_values[i])
+            
+            # Split into two halves
+            split_point = len(label_indices) // 2
+            low_noise_indices = label_indices[:split_point + (len(label_indices) % 2)]  # Extra goes to low
+            high_noise_indices = label_indices[split_point:]
+
+            for i in label_indices:
+                imgTag = f"<img src='data:image/png;base64,{images[i]}' width='32' height='32'>"
+
+                if i in high_noise_indices:
+                    if label not in high_noise_images_by_label:
+                        high_noise_images_by_label[label] = []
+                    if len(high_noise_images_by_label[label]) < 5:
+                        high_noise_images_by_label[label].append(imgTag)
+                else:
+                    if label not in low_noise_images_by_label:
+                        low_noise_images_by_label[label] = []
+                    if len(low_noise_images_by_label[label]) < 5:
+                        low_noise_images_by_label[label].append(imgTag)
 
         # Generate the HTML for both high and low noise categories
         def generate_html(images_by_label, title):
@@ -94,34 +105,55 @@ class Sample:
             source.data["img"] = shared_data["img"][step];
             source.data["label"] = shared_data["label"][step];
 
-            var images = source.data["img"];
-            var labels = source.data["label"];
             var y_values = source.data["y"];
-            var indices = images.length;
+            var labels = source.data["label"];
+            var images = source.data["img"];
+            var indices = y_values.length;
 
             var high_noise_images_by_label = {};
             var low_noise_images_by_label = {};
 
-            for (var i = 0; i < indices; i++) {
-                var label = labels[i];
-                var imgTag = "<img src='data:image/png;base64," + images[i] + "' width='32' height='32'>";
-                
-                if (y_values[i] > 0.1) {  
-                    if (!(label in high_noise_images_by_label)) {
-                        high_noise_images_by_label[label] = [];
-                    }
-                    if (high_noise_images_by_label[label].length < 5){
-                        high_noise_images_by_label[label].push(imgTag);
-                    }
-                } else if (y_values[i] > 0) {  
-                    if (!(label in low_noise_images_by_label)) {
-                        low_noise_images_by_label[label] = [];
-                    }
-                    if (low_noise_images_by_label[label].length < 5){
-                        low_noise_images_by_label[label].push(imgTag);
+            // Get unique labels
+            var unique_labels = [...new Set(labels)];
+
+            unique_labels.forEach(function(label) {
+                // Get indices of this label
+                var label_indices = [];
+                for (var i = 0; i < indices; i++) {
+                    if (labels[i] === label) {
+                        label_indices.push(i);
                     }
                 }
-            }
+
+                // Sort by y_values within this label
+                label_indices.sort((a, b) => y_values[a] - y_values[b]);
+
+                // Split into two halves
+                var split_point = Math.floor(label_indices.length / 2);
+                var low_noise_indices = label_indices.slice(0, split_point + (label_indices.length % 2));
+                var high_noise_indices = label_indices.slice(split_point);
+
+                label_indices.forEach(function(i) {
+                    var imgTag = "<img src='data:image/png;base64," + images[i] + "' width='32' height='32'>";
+
+                    if (high_noise_indices.includes(i)) {
+                        if (!(label in high_noise_images_by_label)) {
+                            high_noise_images_by_label[label] = [];
+                        }
+                        if (high_noise_images_by_label[label].length < 5) {
+                            high_noise_images_by_label[label].push(imgTag);
+                        }
+                    } else {
+                        if (!(label in low_noise_images_by_label)) {
+                            low_noise_images_by_label[label] = [];
+                        }
+                        if (low_noise_images_by_label[label].length < 5) {
+                            low_noise_images_by_label[label].push(imgTag);
+                        }
+                    }
+                });
+            });
+            console.log('len of low' + low_noise_images_by_label.length)
 
             function generate_html(images_by_label, title) {
                 if (display_mode === 'row') {

@@ -206,20 +206,35 @@ shared_source = ColumnDataSource(data={
 })
 '''
 
+def calculate_noise_change(all_epoch_noises, idx):
+    """
+    Calculate the absolute change in noise across epochs for a specific data point (index).
+    The change is calculated as the sum of absolute differences between consecutive epochs.
+    """
+    total_change = 0
+    for epoch in range(1, len(all_epoch_noises)):
+        total_change += np.abs(all_epoch_noises[epoch][idx] - all_epoch_noises[epoch - 1][idx])
+    return total_change
+
 # Filtering function: Get indices matching noise conditions
-def filter_indices(y_values, labels, threshold_high=0.1, max_samples=5):
+def filter_indices(labels, changes, threshold_high=1, threshold_low=1, max_samples=5):
     high_noise_images_by_label = {}
     low_noise_images_by_label = {}
     selected_indices = []
 
-    for i, (y, label) in enumerate(zip(y_values, labels)):
-        if y > threshold_high:  # High noise
+    # Calculate the noise change for each index before filtering
+    noise_changes = changes
+
+    for i, label in enumerate(labels):
+        noise_change = noise_changes[i]
+
+        if noise_change > threshold_high:  # High noise
             if label not in high_noise_images_by_label:
                 high_noise_images_by_label[label] = []
             if len(high_noise_images_by_label[label]) < max_samples:
                 high_noise_images_by_label[label].append(i)
                 selected_indices.append(i)
-        elif y > 0:  # Low noise
+        elif noise_change < threshold_low:
             if label not in low_noise_images_by_label:
                 low_noise_images_by_label[label] = []
             if len(low_noise_images_by_label[label]) < max_samples:
@@ -228,9 +243,17 @@ def filter_indices(y_values, labels, threshold_high=0.1, max_samples=5):
 
     return sorted(set(selected_indices))  # Unique indices sorted
 
-# Apply filtering to each epoch
-filtered_indices_per_epoch = [filter_indices(all_epoch_noises[epoch], labels) for epoch in range(len(all_epoch_noises))]
+changes = []
+for idx in range(len(all_epoch_noises[0])):
+    changes.append(calculate_noise_change(all_epoch_noises, idx))
 
+# Apply filtering to each epoch
+
+#filtered_indices_per_epoch = [filter_indices(all_epoch_noises[epoch], labels, changes) for epoch in range(len(all_epoch_noises))]
+filtered_indices_per_epoch = []
+indices_set = filter_indices(labels, changes)
+for i in range(len(all_epoch_noises)):
+    filtered_indices_per_epoch.append(indices_set)
 # Extract filtered values based on selected indices (Ensuring correct image indexing)
 new_all_epoch_noises = [
     np.array(all_epoch_noises[epoch])[filtered_indices_per_epoch[epoch]]
@@ -267,7 +290,7 @@ shared_source = ColumnDataSource(data={
 })
 
 
-sample_display = Sample(shared_source, shared_resource, dataset, y_range, len(all_epoch_noises[0]), max_epoch)
+sample_display = Sample(shared_source, shared_resource, dataset, y_range, len(all_epoch_noises[0]), max_epoch-1)
 
 # Layout both plots in a column with the epoch slider
 layout = column(sample_display.get_layout())
