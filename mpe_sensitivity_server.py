@@ -51,7 +51,7 @@ with h5py.File(h5_file, "r") as f:
 # Generate IDs
 ids = list(range(len(X)))
 
-colors = ["green", "blue"]
+colors = ["white", "white"]
 marker = ["circle", "square"]
 
 alpha_min, alpha_max = 0.2, 1.0
