@@ -12,6 +12,7 @@ import numpy as np
 from visualizer.ls_decisionboundary import LSBoundaryVisualizer
 from visualizer.projection import ProjectionPlot
 from visualizer.noise_bar import BarProjectionPlot
+from visualizer.lineplot import LinePlot
 
 
 def extract_boundary_lines(xx, yy, zz):
@@ -116,9 +117,22 @@ for epoch_noises, sig_in_epoch in zip(all_epoch_noises, sig_in):
     region_means_list.append(region_means)
     region_sig_in_list.append(region_centers)
 
+last_step = max_step-1
+
+scaled_sizes_list = [scaled_sizes_list[last_step]]
+scaled_alphas_list = [scaled_alphas_list[last_step]]
+sig_in = [sig_in[last_step]]
+logits = [logits[last_step]]
+all_epoch_noises = [all_epoch_noises[last_step]]
+region_means_list = [region_means_list[last_step]]
+region_sig_in_list = [region_sig_in_list[last_step]]
+xs = [xs[last_step]]
+ys = [ys[last_step]]
+steps = list(range(max_step))
+steps = [steps[last_step]]
 
 shared_resource = ColumnDataSource(data={
-    "epoch": list(range(max_step)),
+    "epoch": steps,
     "xs": xs,
     "ys": ys,
     "size": scaled_sizes_list,
@@ -142,7 +156,8 @@ shared_source = ColumnDataSource(data={
     "noise": all_epoch_noises[0],
     "selection": [6] * len(y_train),
     "line_color": ['white'] * len(y_train),
-    "bar_alpha": [0] * len(y_train)
+    "bar_alpha": [0] * len(y_train),
+    "temp": [0] * len(y_train)
 })
 
 all_barplot = ColumnDataSource(data={
@@ -160,13 +175,13 @@ min_y = np.min(region_means_list)
 max_y = np.max(region_means_list)
 
 boundary = LSBoundaryVisualizer(shared_source, shared_resource, max_step-1, colors, total_batches, mode='Step', sig_projection=True, barplot_shared_resource=all_barplot, barplot_shared_source=current_barplot)
-#projection = LinePlot(shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in))
+projection = LinePlot(shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in))
 sigmoid = ProjectionPlot(shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in))
-barplot = BarProjectionPlot(current_barplot, shared_source, min_x=np.min(region_sig_in_list), max_x=np.max(region_sig_in_list), min_y=min_y, max_y=max_y)
+barplot = BarProjectionPlot(current_barplot, shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in), min_y=min_y, max_y=np.max(all_epoch_noises))
 
 boundary_layout = column(boundary.get_layout())
 sigmoid_layout = column(sigmoid.get_layout())
-#projection_layout = column(projection.get_layout())
+projection_layout = column(projection.get_layout())
 barplot_layout = column(barplot.get_layout())
 
 
@@ -174,7 +189,7 @@ layout = row(
     boundary_layout, 
     column(barplot_layout,
            sigmoid_layout,
-           #projection_layout
+           projection_layout
            ), 
     )
 

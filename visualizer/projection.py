@@ -15,17 +15,18 @@ class ProjectionPlot:
         p = figure(height=200,
                            width=600,
                            title="Sigmoid Plot",
-                           tools="")
+                           tools="",
+                           x_range=(self.min-1.5, self.max+1.5))
         p.yaxis.visible = False
         p.xaxis.axis_line_color = None
         p.xaxis.major_tick_line_color = None
         p.xaxis.minor_tick_line_color = None
 
-        x_sigmoid = np.linspace(self.min+0.1, self.max-0.1, 100)
+        x_sigmoid = np.linspace(self.min, self.max, 100)
         sigmoid_y = 1 / (1 + np.exp(-x_sigmoid))
         p.line(x_sigmoid, sigmoid_y, color="blue", line_width=2, legend_label="Sigmoid")
 
-        p.scatter("sig_in", "logits", source=self.source, size='selection', color='color',  marker="marker", line_color='black')
+        p.scatter("sig_in", "logits", source=self.source, size='selection', color='color',  marker="marker", line_color='black', alpha='bar_alpha')
         p.legend.location = "top_left"
 
         return p

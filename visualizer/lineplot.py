@@ -16,7 +16,7 @@ class LinePlot:
                            width=600,
                            title="Single Axis Plot",
                            tools="",
-                           x_range=(self.min_x-1, self.max_x+1))
+                           x_range=(self.min_x-1.5, self.max_x+1.5))
         p.yaxis.visible = False
         p.xaxis.axis_line_color = None
         p.xaxis.major_tick_line_color = None

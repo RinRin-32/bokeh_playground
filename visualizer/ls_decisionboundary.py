@@ -33,12 +33,12 @@ class LSBoundaryVisualizer:
         y_min, y_max = self.X[:, 1].min() - 1, self.X[:, 1].max() + 1
 
         self.plot = figure(
-            title="Induced Noise from Adaptive Variational Learning",
+            title="Adaptive Label Noise from Variational Learning",
             width=600, height=600,
             #sizing_mode="scale_both",
             x_range=(x_min, x_max),
             y_range=(y_min, y_max),
-            tools="tap, reset, pan, wheel_zoom",
+            tools="tap, box_select, reset, pan, wheel_zoom",
             active_drag="pan",
             active_scroll="wheel_zoom"
         )
@@ -80,6 +80,8 @@ class LSBoundaryVisualizer:
                         new_data["color"][idx] = color;
                         new_data["selection"][idx] = 15
                         new_data["bar_alpha"][idx] = 1.0
+                        new_data["temp"][idx] = new_data["alpha"][idx]
+                        new_data["alpha"][idx] = 1.0
                     }
                 }
                 source.change.emit();
@@ -180,11 +182,21 @@ class LSBoundaryVisualizer:
             for (var i = 0; i < data['color'].length; i++) {
                 data['color'][i] = color;
                 data['bar_alpha'][i] = 0;
+                data['selection'][i] = 6;
+                if (data['temp'][i] != 0){
+                    data['alpha'][i] = data['temp'][i]
+                    data['temp'][i] = 0
+                }
             }
             source.selected.indices = [];  // Clear selection
             source.change.emit();  // Notify the source to update the plot
         """))
 
     def get_layout(self):
-        return column(self.plot, self.epoch_display, self.step_slider, self.play_pause_button, self.clear_selection_button,
-                      row(Div(text="Tracker Colors:"), *self.tracker_buttons))
+        return column(
+            self.plot, 
+            self.epoch_display, 
+            #self.step_slider, 
+            #self.play_pause_button, 
+            self.clear_selection_button,
+            row(Div(text="Tracker Colors:"), *self.tracker_buttons))
