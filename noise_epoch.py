@@ -130,23 +130,21 @@ with h5py.File(h5_file, "r") as f:
     dataset = config.get("dataset")
     max_epoch = config.get("max_epochs")
     total_batches = config.get("total_batch")
-    max_step = total_batches * max_epoch
-    max_epoch = max_step
     images = np.array(f["images"])
     labels = np.array(f["labels"])
 
     all_epoch_noises = [
-        np.round(f[f"scores/step_{epoch}"]["noise"][()], 1)
+        np.round(f[f"scores/epoch_{epoch}"]["noise"][()], 1)
         for epoch in range(max_epoch)
     ]
 
     all_induced_noises = [
-        np.round(f[f"scores/step_{epoch}"]["all_noise"][()], 1)
+        np.round(f[f"scores/epoch_{epoch}"]["all_noise"][()], 1)
         for epoch in range(max_epoch)
     ]
 
-    test_acc = [f[f"results/step_{epoch}"]["test_acc"][()] for epoch in range(max_epoch)]
-    test_nll = [float(f[f"results/step_{epoch}"]["test_nll"][()].item()) for epoch in range(max_epoch)]    
+    test_acc = [f[f"results/epoch_{epoch}"]["test_acc"][()] for epoch in range(max_epoch)]
+    test_nll = [float(f[f"results/epoch_{epoch}"]["test_nll"][()].item()) for epoch in range(max_epoch)]    
 
 
 if args.compress:
@@ -298,7 +296,7 @@ shared_source = ColumnDataSource(data={
     "x": new_relative_positioning[0],
 })
 
-sample_display = Sample(shared_source, shared_resource, dataset, y_range, len(all_epoch_noises[0]), max_epoch-1, image_base64_list, max_sample=args.max_samples, mode='Step')
+sample_display = Sample(shared_source, shared_resource, dataset, y_range, len(all_epoch_noises[0]), max_epoch, image_base64_list, max_sample=args.max_samples, mode='Epoch')
 
 # Layout both plots in a column with the epoch slider
 layout = column(sample_display.get_layout())

@@ -195,7 +195,7 @@ class LSBoundaryVisualizer:
     def get_layout(self):
         return column(
             self.plot, 
-            self.epoch_display, 
+            #self.epoch_display, 
             #self.step_slider, 
             #self.play_pause_button, 
             self.clear_selection_button,

@@ -13,7 +13,7 @@ from io import BytesIO
 import base64
 import os
 import matplotlib.pyplot as plt
-from visualizer.sample import Sample
+from visualizer.order import Sample
 
 def sample_one_per_label(labels):
     unique_labels = np.unique(labels)
@@ -104,8 +104,6 @@ parser.add_argument("--compress", action="store_true", help="Enable random sampl
 parser.add_argument("--no-compress", dest="compress", action="store_false", help="Disable random sampling of images")
 parser.add_argument("--n_sample", type=int, default=1000, help="Number of images selected for plot if compressing, 1000 by default")
 parser.add_argument("--output", type=str, required=False, help="If specified filename, while running on python not bokeh serve, the html will be saved under ./output")
-parser.add_argument("--max_samples", type=int, default=15, help="Number of images selected for display, default at 15 images per example per label")
-
 args = parser.parse_args()
 
 if args.output is not None:
@@ -129,24 +127,18 @@ with h5py.File(h5_file, "r") as f:
     config = json.loads(config_json)
     dataset = config.get("dataset")
     max_epoch = config.get("max_epochs")
-    total_batches = config.get("total_batch")
-    max_step = total_batches * max_epoch
-    max_epoch = max_step
+
     images = np.array(f["images"])
     labels = np.array(f["labels"])
 
-    all_epoch_noises = [
-        np.round(f[f"scores/step_{epoch}"]["noise"][()], 1)
-        for epoch in range(max_epoch)
-    ]
+    sentivities = [f[f"scores/epoch_{epoch}"]["sensitivities"][()] for epoch in range(max_epoch)]
+    all_epoch_noises = [f[f"scores/epoch_{epoch}"]["noise"][()] for epoch in range(max_epoch)]
 
-    all_induced_noises = [
-        np.round(f[f"scores/step_{epoch}"]["all_noise"][()], 1)
-        for epoch in range(max_epoch)
-    ]
+    all_induced_noises = [f[f"scores/epoch_{epoch}"]["all_noise"][()] for epoch in range(max_epoch)]
 
-    test_acc = [f[f"results/step_{epoch}"]["test_acc"][()] for epoch in range(max_epoch)]
-    test_nll = [float(f[f"results/step_{epoch}"]["test_nll"][()].item()) for epoch in range(max_epoch)]    
+    test_acc = [f[f"results/epoch_{epoch}"]["test_acc"][()] for epoch in range(max_epoch)]
+    test_nll = [float(f[f"results/epoch_{epoch}"]["test_nll"][()].item()) for epoch in range(max_epoch)]    
+    estimated_nll = [f[f"results/epoch_{epoch}"]["estimated_nll"][()] for epoch in range(max_epoch)]
 
 
 if args.compress:
@@ -192,27 +184,27 @@ y_max = max(np.max(noises) for noises in all_epoch_noises)
 
 # Store them as a list
 y_range = [y_min, y_max]
-'''
-new_all_epoch_noises = [np.append(all_epoch_noises[epoch][:2000], all_epoch_noises[epoch][-2000:]) for epoch in range(len(all_epoch_noises))]
-new_relative_positioning = [np.append(relative_positioning[epoch][:2000], relative_positioning[epoch][-2000:]) for epoch in range(len(relative_positioning))]
-new_img = image_base64_list[:2000] + image_base64_list[-2000:]
-labels = labels.astype(str)
-new_lab = np.append(labels[:2000], labels[-2000:])
 
-shared_resource = ColumnDataSource(data={
-    "y": new_all_epoch_noises,
-    "epoch": list(range(max_epoch)),
-    "x": new_relative_positioning,
-})
 
-#get all the index here somehow to reduce computation and checks required done in the jscallbacks
-shared_source = ColumnDataSource(data={
-    "img": new_img,
-    "label": new_lab,
-    "y": new_all_epoch_noises[0],
-    "x": new_relative_positioning[0],
-})
-'''
+# Store them as a list
+y_range = [y_min, y_max]
+
+# Normalize each epoch's noise independently
+normalized_induced_noises = []
+
+for epoch_noises in all_induced_noises:  # Each epoch
+    epoch_noises = np.array(epoch_noises)  # Shape: (num_datapoints, num_classes)
+
+    # Convert noise values to absolute (as higher absolute noise means higher confidence)
+    abs_noises = np.abs(epoch_noises)
+
+    # Normalize so each row (datapoint) sums to 1
+    row_sums = np.sum(abs_noises, axis=1, keepdims=True)  # Shape: (num_datapoints, 1)
+    row_sums[row_sums == 0] = 1  # Avoid division by zero
+
+    normalized_noises = abs_noises / row_sums  # Shape: (num_datapoints, num_classes)
+
+    normalized_induced_noises.append(normalized_noises.tolist())  # Store as list
 
 def calculate_noise_change(all_epoch_noises, idx):
     """
@@ -225,53 +217,48 @@ def calculate_noise_change(all_epoch_noises, idx):
     return total_change
 
 # Filtering function: Get indices matching noise conditions
-def filter_indices(labels, last_epoch_noises, max_samples=15):
+def filter_indices(y_values, labels, changes, threshold_high=1, threshold_low=0.1, max_samples=50):
     high_noise_images_by_label = {}
     low_noise_images_by_label = {}
     selected_indices = []
 
-    unique_labels = set(labels)
+    # Calculate the noise change for each index before filtering
+    noise_changes = changes
 
-    for label in unique_labels:
-        # Get indices of samples with this label
-        label_indices = [i for i, lbl in enumerate(labels) if lbl == label]
-        
-        # Sort these indices by noise (descending for highest, ascending for lowest)
-        sorted_by_noise = sorted(label_indices, key=lambda i: last_epoch_noises[i])
-        
-        # Select top 5 highest and lowest noise points
-        high_noise = sorted_by_noise[-max_samples:]  # Last 5 have highest noise
-        low_noise = sorted_by_noise[:max_samples]   # First 5 have lowest noise
+    for i, (y, label) in enumerate(zip(y_values, labels)):
+        noise_change = noise_changes[i]
 
-        # Store and track selected indices
-        high_noise_images_by_label[label] = high_noise
-        low_noise_images_by_label[label] = low_noise
-        selected_indices.extend(high_noise + low_noise)
+        if noise_change > threshold_high:  # High noise
+            if label not in high_noise_images_by_label:
+                high_noise_images_by_label[label] = []
+            if len(high_noise_images_by_label[label]) < max_samples:
+                high_noise_images_by_label[label].append(i)
+                selected_indices.append(i)
+        elif noise_change < threshold_low:
+            if label not in low_noise_images_by_label:
+                low_noise_images_by_label[label] = []
+            if len(low_noise_images_by_label[label]) < max_samples +1:
+                low_noise_images_by_label[label].append(i)
+                selected_indices.append(i)
 
-    return sorted(set(selected_indices))
+    return sorted(set(selected_indices))  # Unique indices sorted
 
 changes = []
 for idx in range(len(all_epoch_noises[0])):
     changes.append(calculate_noise_change(all_epoch_noises, idx))
 
 # Apply filtering to each epoch
+filtered_indices_per_epoch = [filter_indices(all_epoch_noises[epoch], labels, changes) for epoch in range(len(all_epoch_noises))]
 
-#filtered_indices_per_epoch = [filter_indices(all_epoch_noises[epoch], labels, changes) for epoch in range(len(all_epoch_noises))]
-filtered_indices_per_epoch = []
-
-last_epoch_noises = all_epoch_noises[-1]
-indices_set = filter_indices(labels, last_epoch_noises, max_samples=args.max_samples)
-for i in range(len(all_epoch_noises)):
-    filtered_indices_per_epoch.append(indices_set)
 # Extract filtered values based on selected indices (Ensuring correct image indexing)
 new_all_epoch_noises = [
     np.array(all_epoch_noises[epoch])[filtered_indices_per_epoch[epoch]]
     for epoch in range(len(all_epoch_noises))
 ]
-new_relative_positioning = [
+'''new_relative_positioning = [
     np.array(relative_positioning[epoch])[filtered_indices_per_epoch[epoch]]
     for epoch in range(len(relative_positioning))
-]
+]'''
 new_images = [
     np.array(image_base64_list)[filtered_indices_per_epoch[epoch]]
     for epoch in range(len(all_epoch_noises))
@@ -280,6 +267,35 @@ new_labels = [
     np.array(labels)[filtered_indices_per_epoch[epoch]]
     for epoch in range(len(all_epoch_noises))
 ]
+new_induced = [
+    np.array(normalized_induced_noises[epoch])[filtered_indices_per_epoch[epoch]]
+    for epoch in range(len(normalized_induced_noises))
+]
+
+
+all_epoch_indices = [np.argsort(noises)[::-1] for noises in new_all_epoch_noises]
+
+relative_positioning = []
+for indices in all_epoch_indices:
+    # Create a new array of the same size
+    relative_position = np.zeros_like(indices)
+    
+    # Fill relative_position such that for each sorted position, we store the original index
+    for sorted_index, original_index in enumerate(indices):
+        relative_position[original_index] = sorted_index
+    
+    # Append the relative_position for the current epoch
+    relative_positioning.append(relative_position)
+
+new_relative_positioning = relative_positioning
+
+
+'''noise_barcharts = []
+for epoch in range(len(new_induced)):
+    epoch_chart = []
+    for images in range(len(new_induced[epoch])):
+        epoch_chart.append(generate_noise_barchart(new_induced[epoch][images]))
+    noise_barcharts.append(epoch_chart)'''
 
 # Update shared_resource: Store images in the same structure as y and x
 shared_resource = ColumnDataSource(data={
@@ -287,18 +303,21 @@ shared_resource = ColumnDataSource(data={
     "epoch": list(range(len(new_all_epoch_noises))),
     "x": new_relative_positioning,
     "label": new_labels,
-    "img": filtered_indices_per_epoch,  # Store images correctly matched with y
+    "img": new_images,  # Store images correctly matched with y
+    #"noise_chart": noise_barcharts
 })
 
 # Store first epoch's filtered data for JS callbacks
 shared_source = ColumnDataSource(data={
-    "img": filtered_indices_per_epoch[0],
+    "img": new_images[0],
     "label": new_labels[0].astype(str),
     "y": new_all_epoch_noises[0],
     "x": new_relative_positioning[0],
+    #"noise_chart": noise_barcharts[0]
 })
 
-sample_display = Sample(shared_source, shared_resource, dataset, y_range, len(all_epoch_noises[0]), max_epoch-1, image_base64_list, max_sample=args.max_samples, mode='Step')
+
+sample_display = Sample(shared_source, shared_resource, dataset, y_range, len(all_epoch_noises[0]), max_epoch)
 
 # Layout both plots in a column with the epoch slider
 layout = column(sample_display.get_layout())

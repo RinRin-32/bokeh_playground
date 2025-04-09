@@ -5,7 +5,7 @@ import matplotlib
 from bokeh.plotting import figure
 
 class EvolvingBoundaryVisualizer:
-    def __init__(self, shared_source, shared_resource, steps, colors, batches=4, max_steps=30, show_lambda=False):
+    def __init__(self, shared_source, shared_resource, steps, colors, batches=4, max_steps=30, show_lambda=False, plotname ="Sensitivity over Training"):
         self.source = shared_source
         self.shared_resource = shared_resource
         self.batches = batches
@@ -25,7 +25,7 @@ class EvolvingBoundaryVisualizer:
         self.epoch_div = Div(text=f"Epoch: 0", width=60, height=20)  # New Div to display Epoch
 
         self.plot = figure(
-            title="Sensitivity over Training",
+            title=plotname,
             width=600, height=600,
             x_range=(x_min, x_max),
             y_range=(y_min, y_max),
