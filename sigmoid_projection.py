@@ -27,6 +27,7 @@ parser = argparse.ArgumentParser(description="Launch the Bokeh server with an HD
 parser.add_argument("--file", type=str, required=True, help="Path to the HDF5 file")
 parser.add_argument("--output", type=str, required=False, help="If specified filename, while running on python not bokeh serve, the html will be saved in ./output")
 parser.add_argument("--scale_factor", type=int, default=3, help="Scale plotting of influence exponentially, default set at 3")
+parser.add_argument("--num_regions", type=int, default=24, help='number of region')
 
 args = parser.parse_args()
 
@@ -102,7 +103,7 @@ for epoch_noises in norm:
     scaled_alphas_list.append(alpha_assignments.tolist())
     scaled_sizes_list.append(size_assignments.tolist())
 
-num_regions = 24  # Define a fixed number of regions
+num_regions = args.num_regions  # Define a fixed number of regions
 region_edges = np.linspace(np.min(sig_in), np.max(sig_in), num_regions + 1)
 region_centers = (region_edges[:-1] + region_edges[1:]) / 2  # Fixed bin centers
 

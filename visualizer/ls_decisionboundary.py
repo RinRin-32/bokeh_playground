@@ -38,8 +38,8 @@ class LSBoundaryVisualizer:
             #sizing_mode="scale_both",
             x_range=(x_min, x_max),
             y_range=(y_min, y_max),
-            tools="tap, box_select",
-            active_drag="box_select",
+            tools=" ",
+            #active_drag="box_select",
         )
 
         initial_xs = shared_resource.data["xs"][0]
