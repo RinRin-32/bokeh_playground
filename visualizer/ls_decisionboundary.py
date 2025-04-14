@@ -216,7 +216,7 @@ class LSBoundaryVisualizer:
             let closest_i = 0;
             let closest_dist = Math.abs(xs[0] - px);
             for (let i = 1; i < xs.length; i++) {
-                const dist = Math.abs(xs[i] - px - 1);
+                const dist = Math.abs(xs[i] - px);
                 if (dist < closest_dist) {
                     closest_i = i;
                     closest_dist = dist;
