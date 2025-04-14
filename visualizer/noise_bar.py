@@ -21,7 +21,7 @@ class BarProjectionPlot:
         p = figure(height=600, width=600, title="Noise Magnitude", tools="", 
                    x_range=(self.min_x-1.5, self.max_x+1.5), 
                    y_range=(self.min_y, self.max_y))
-
+        p.yaxis.visible = False
         p.xaxis.axis_line_color = None
         p.xaxis.major_tick_line_color = None
         p.xaxis.minor_tick_line_color = None
@@ -66,6 +66,14 @@ class BarProjectionPlot:
             dist_source = ColumnDataSource(data=dict(x=x_smooth, y=y_smooth))
             self.plot.line(x="x", y="y", source=dist_source, 
                            line_color="orange", line_width=2, line_dash="dashed")
+            
+        self.dist_source = ColumnDataSource(data=dict(x=x_smooth, y=y_smooth))
+        self.marker_source = ColumnDataSource(data=dict(x=[x_smooth[0]], y=[y_smooth[0]]))
+
+        self.plot.line(x="x", y="y", source=self.dist_source, 
+                    line_color="orange", line_width=2, line_dash="dashed")
+        self.plot.circle(x="x", y="y", source=self.marker_source, 
+                        color="red", size=10)
 
     def get_layout(self):
         return self.plot

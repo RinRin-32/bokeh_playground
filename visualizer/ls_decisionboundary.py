@@ -5,7 +5,7 @@ from bokeh.plotting import figure
 import matplotlib
 
 class LSBoundaryVisualizer:
-    def __init__(self, shared_source, shared_resource, max_step, colors, total_batches, mode='Step', sig_projection=False, barplot_shared_source=None, barplot_shared_resource=None):
+    def __init__(self, shared_source, shared_resource, max_step, colors, total_batches, mode='Step', sig_projection=False, barplot_shared_source=None, barplot_shared_resource=None, barplot_module=None):
         self.source = shared_source
         self.shared_resource = shared_resource
         self.max_step = max_step
@@ -17,6 +17,7 @@ class LSBoundaryVisualizer:
         self.barplot_source = barplot_shared_source
         self.barplot_resource = barplot_shared_resource
         self.barmode = (self.barplot_source != None)
+        self.barplot = barplot_module
 
         self.tracker_colors = ["#d55e00", "#cc79a7", "#0072b2", "#f0e442", "#009e73"]
         self.tracker_colors_hex = [matplotlib.colors.rgb2hex(c) for c in self.tracker_colors]  # Store as hex
@@ -48,7 +49,7 @@ class LSBoundaryVisualizer:
 
         #self.plot.scatter("x", "y", source=self.source, size="size", color="color", marker="marker", line_color='black', alpha="alpha")
         self.plot.scatter("x", "y", source=self.source, size=8, color="color", marker="marker", line_color='black', alpha=1)
-        self.plot.multi_line(xs="xs", ys="ys", source=self.boundary_source, line_width=2, color="black")
+        self.plot.multi_line(xs="xs", ys="ys", source=self.boundary_source, line_width=6, color="black")
 
         self.step_slider = Slider(start=0, end=self.max_step, value=0, step=1, title=mode)
 
@@ -166,7 +167,9 @@ class LSBoundaryVisualizer:
             x0=extended_start[0], y0=extended_start[1],
             x1=extended_end[0], y1=extended_end[1],
             source=self.source,
-            bar_plot=self.barplot_source
+            bar_plot=self.barplot_source,
+            dist_source=self.barplot.dist_source,
+            marker_source=self.barplot.marker_source
         ), code="""
             const t = cb_obj.value;
             const px = (1 - t) * x0 + t * x1;
@@ -181,7 +184,6 @@ class LSBoundaryVisualizer:
             const bar_data = bar_plot.data;
             const EPS = 0.05;
 
-            // Reset all colors
             for (let i = 0; i < data['color'].length; i++) {
                 data['color'][i] = data['original_color'][i];
             }
@@ -190,18 +192,15 @@ class LSBoundaryVisualizer:
             }
 
             let selected_region = null;
-
-            // Highlight point(s) under the red dot and record region
             for (let i = 0; i < data['x'].length; i++) {
                 const dx = Math.abs(data['x'][i] - px);
                 const dy = Math.abs(data['y'][i] - py);
                 if (dx <= EPS && dy <= EPS) {
                     data['color'][i] = 'red';
-                    selected_region = data['region'][i];  // Assume only one point will match
+                    selected_region = data['region'][i];
                 }
             }
 
-            // Highlight corresponding bar if region is found
             if (selected_region !== null) {
                 for (let i = 0; i < bar_data['region'].length; i++) {
                     if (bar_data['region'][i] === selected_region) {
@@ -210,6 +209,23 @@ class LSBoundaryVisualizer:
                     }
                 }
             }
+
+            // Update marker on smoothed line (find closest x)
+            const xs = dist_source.data.x;
+            const ys = dist_source.data.y;
+            let closest_i = 0;
+            let closest_dist = Math.abs(xs[0] - px);
+            for (let i = 1; i < xs.length; i++) {
+                const dist = Math.abs(xs[i] - px - 1);
+                if (dist < closest_dist) {
+                    closest_i = i;
+                    closest_dist = dist;
+                }
+            }
+
+            marker_source.data.x[0] = xs[closest_i];
+            marker_source.data.y[0] = ys[closest_i];
+            marker_source.change.emit();
 
             source.change.emit();
             bar_plot.change.emit();

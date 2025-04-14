@@ -197,10 +197,10 @@ current_barplot = ColumnDataSource(data={
 min_y = np.min(region_means_list)
 max_y = np.max(region_means_list)
 
-boundary = LSBoundaryVisualizer(shared_source, shared_resource, max_step-1, colors, total_batches, mode='Step', sig_projection=True, barplot_shared_resource=all_barplot, barplot_shared_source=current_barplot)
+barplot = BarProjectionPlot(current_barplot, shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in), min_y=np.min(region_means_list)-0.005, max_y=np.max(region_means_list)+0.005, bar_width=math.ceil(1/(num_regions**2)))
+boundary = LSBoundaryVisualizer(shared_source, shared_resource, max_step-1, colors, total_batches, mode='Step', sig_projection=True, barplot_shared_resource=all_barplot, barplot_shared_source=current_barplot, barplot_module=barplot)
 projection = LinePlot(shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in))
 sigmoid = ProjectionPlot(shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in))
-barplot = BarProjectionPlot(current_barplot, shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in), min_y=np.min(region_means_list)-0.005, max_y=np.max(region_means_list)+0.005, bar_width=math.ceil(1/(num_regions**2)))
 
 boundary_layout = column(boundary.get_layout())
 sigmoid_layout = column(sigmoid.get_layout())
