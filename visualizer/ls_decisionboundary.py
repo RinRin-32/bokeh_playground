@@ -1,4 +1,4 @@
-from bokeh.models import Button, CustomJS, Slider, ColumnDataSource, Div, TapTool
+from bokeh.models import Button, CustomJS, Slider, ColumnDataSource, Div, TapTool, PointDrawTool
 from bokeh.layouts import column, row
 import numpy as np
 from bokeh.plotting import figure
@@ -46,7 +46,8 @@ class LSBoundaryVisualizer:
         initial_ys = shared_resource.data["ys"][0]
         self.boundary_source = ColumnDataSource(data={"xs": initial_xs, "ys": initial_ys})
 
-        self.plot.scatter("x", "y", source=self.source, size="size", color="color", marker="marker", line_color='black', alpha="alpha")
+        #self.plot.scatter("x", "y", source=self.source, size="size", color="color", marker="marker", line_color='black', alpha="alpha")
+        self.plot.scatter("x", "y", source=self.source, size=8, color="color", marker="marker", line_color='black', alpha=1)
         self.plot.multi_line(xs="xs", ys="ys", source=self.boundary_source, line_width=2, color="black")
 
         self.step_slider = Slider(start=0, end=self.max_step, value=0, step=1, title=mode)
@@ -96,6 +97,123 @@ class LSBoundaryVisualizer:
                 source.change.emit();  // Update the selection
             }
         """)
+
+        # Identify the point with the maximum noise (most positive)
+        max_noise_idx = np.argmax(self.source.data["noise"])
+        max_noise_point = self.X[max_noise_idx]
+        max_noise_class = self.y[max_noise_idx]
+
+        # Identify the point with the minimum noise (most negative)
+        min_noise_idx = np.argmin(self.source.data["noise"])
+        min_noise_point = self.X[min_noise_idx]
+        min_noise_class = self.y[min_noise_idx]
+
+        # Make sure they are different classes (if not, find alternative min from another class)
+        if max_noise_class == min_noise_class:
+            # Search for min from a different class than the max_noise_class
+            mask = self.y != max_noise_class
+            candidate_noises = np.array(self.source.data["noise"])[mask]
+            candidate_points = self.X[mask]
+            candidate_classes = self.y[mask]
+            min_candidate_idx = np.argmin(candidate_noises)
+            min_noise_point = candidate_points[min_candidate_idx]
+            min_noise_class = candidate_classes[min_candidate_idx]
+
+        # Now use these two points to set the line
+        self.fixed_line_start = min_noise_point
+        self.fixed_line_end = max_noise_point
+
+        # Compute the direction vector
+        direction = self.fixed_line_end - self.fixed_line_start
+        direction = direction / np.linalg.norm(direction)
+
+        # Get the bounds of the plot from your data
+        x_vals = self.X[:, 0]
+        y_vals = self.X[:, 1]
+        x_min, x_max = x_vals.min(), x_vals.max()
+        y_min, y_max = y_vals.min(), y_vals.max()
+
+        # Determine how far to extend (pick large enough range to cover the plot)
+        max_range = max(x_max - x_min, y_max - y_min)
+        extend_length = max_range * 0.7  # or tweak this scalar as needed
+
+        # Extend in both directions from the midpoint of the two original points
+        midpoint = (self.fixed_line_start + self.fixed_line_end) / 2
+
+        extended_start = midpoint - direction * extend_length
+        extended_end = midpoint + direction * extend_length
+
+        # Create source for fixed line
+        self.line_source = ColumnDataSource(data={
+            "xs": [[extended_start[0], extended_end[0]]],
+            "ys": [[extended_start[1], extended_end[1]]]
+        })
+
+        # Add fixed line to plot
+        self.plot.multi_line(xs="xs", ys="ys", source=self.line_source, line_width=2, color="red", line_dash="dashed")
+
+        # Source for the point on the line
+        self.point_source = ColumnDataSource(data={"x": [extended_start[0]], "y": [extended_start[1]]})
+        self.plot.circle(x="x", y="y", size=10, color="red", source=self.point_source)
+
+        # Slider to move point along the line (0=start, 1=end)
+        self.line_slider = Slider(start=0, end=1, value=0, step=0.01, title=None, show_value=False)
+
+        self.slider_title = Div(text="<b>Move Point on Line</b>")
+
+        self.line_slider.js_on_change("value", CustomJS(args=dict(
+            point_source=self.point_source,
+            x0=extended_start[0], y0=extended_start[1],
+            x1=extended_end[0], y1=extended_end[1],
+            source=self.source,
+            bar_plot=self.barplot_source
+        ), code="""
+            const t = cb_obj.value;
+            const px = (1 - t) * x0 + t * x1;
+            const py = (1 - t) * y0 + t * y1;
+
+            // Update red dot
+            point_source.data.x[0] = px;
+            point_source.data.y[0] = py;
+            point_source.change.emit();
+
+            const data = source.data;
+            const bar_data = bar_plot.data;
+            const EPS = 0.05;
+
+            // Reset all colors
+            for (let i = 0; i < data['color'].length; i++) {
+                data['color'][i] = data['original_color'][i];
+            }
+            for (let i = 0; i < bar_data['color'].length; i++) {
+                bar_data['color'][i] = 'white';
+            }
+
+            let selected_region = null;
+
+            // Highlight point(s) under the red dot and record region
+            for (let i = 0; i < data['x'].length; i++) {
+                const dx = Math.abs(data['x'][i] - px);
+                const dy = Math.abs(data['y'][i] - py);
+                if (dx <= EPS && dy <= EPS) {
+                    data['color'][i] = 'red';
+                    selected_region = data['region'][i];  // Assume only one point will match
+                }
+            }
+
+            // Highlight corresponding bar if region is found
+            if (selected_region !== null) {
+                for (let i = 0; i < bar_data['region'].length; i++) {
+                    if (bar_data['region'][i] === selected_region) {
+                        bar_data['color'][i] = 'red';
+                        break;
+                    }
+                }
+            }
+
+            source.change.emit();
+            bar_plot.change.emit();
+        """))
 
         self.setup_callbacks()
 
@@ -197,5 +315,8 @@ class LSBoundaryVisualizer:
             #self.epoch_display, 
             #self.step_slider, 
             #self.play_pause_button, 
-            self.clear_selection_button,
-            row(Div(text="Tracker Colors:"), *self.tracker_buttons))
+            #self.clear_selection_button,
+            self.slider_title,
+            self.line_slider,
+            #row(Div(text="Tracker Colors:"), *self.tracker_buttons)
+            )

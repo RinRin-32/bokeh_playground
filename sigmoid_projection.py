@@ -56,7 +56,13 @@ with h5py.File(h5_file, "r") as f:
     X_coord = np.array(f["coord/X_train"])
     y_train = np.array(f["coord/y_train"])
 
-    all_epoch_noises = [f[f"scores/step_{epoch}"]["noise"][()] for epoch in range(max_step)]
+    #all_epoch_noises = [f[f"scores/step_{epoch}"]["all_noise"][()] for epoch in range(max_step)]
+    all_epoch_noises = [
+        [point[0] for point in f[f"scores/step_{epoch}"]["all_noise"][()]]
+        for epoch in range(max_step)
+    ]
+    norm = [f[f"scores/step_{epoch}"]["noise"][()] for epoch in range(max_step)]
+    #induced_noise = [f[f"scores/step_{epoch}"]["all_noise"][()] for epoch in range(max_step)]
     logits = [f[f"scores/step_{epoch}"]["logits"][()] for epoch in range(max_step)]
     sig_in = [f[f"scores/step_{epoch}"]["sig_input"][()] for epoch in range(max_step)]
 
@@ -84,7 +90,7 @@ alpha_min, alpha_max = 0.2, 1.0
 size_min, size_max = 5, 50
 scaling_factor = args.scale_factor  # Adjust to control exaggeration
 
-for epoch_noises in all_epoch_noises:
+for epoch_noises in norm:
     normed_values = (epoch_noises - np.min(epoch_noises)) / (np.max(epoch_noises) - np.min(epoch_noises) + 1e-8)
     
     # Apply exponential transformation to exaggerate differences
@@ -103,7 +109,11 @@ region_centers = (region_edges[:-1] + region_edges[1:]) / 2  # Fixed bin centers
 region_means_list = []
 region_sig_in_list = []
 
+
 for epoch_noises, sig_in_epoch in zip(all_epoch_noises, sig_in):
+    epoch_noises = np.array(epoch_noises)
+    sig_in_epoch = np.array(sig_in_epoch)
+
     region_means = np.zeros(num_regions)  # Initialize all bins to zero
     region_counts = np.zeros(num_regions)  # Track number of points per bin
 
@@ -112,10 +122,17 @@ for epoch_noises, sig_in_epoch in zip(all_epoch_noises, sig_in):
         
         if np.any(region_mask):
             region_means[i] = np.mean(epoch_noises[region_mask])
-            region_counts[i] = np.sum(region_mask)  # Count the number of points in this bin
+            region_counts[i] = np.sum(region_mask)
 
     region_means_list.append(region_means)
     region_sig_in_list.append(region_centers)
+    # Assign region index to each point for this epoch
+    region_ids = np.digitize(sig_in_epoch, region_edges) - 1  # subtract 1 to make bins 0-indexed
+    region_ids = np.clip(region_ids, 0, num_regions - 1)  # clamp to valid region range
+
+    # Save this to later use (only saving for the last step, like others)
+    last_region_ids = region_ids
+
 
 last_step = max_step-1
 
@@ -131,8 +148,9 @@ ys = [ys[last_step]]
 steps = list(range(max_step))
 steps = [steps[last_step]]
 
+
 shared_resource = ColumnDataSource(data={
-    "epoch": steps,
+    "epoch": list(range(1)),
     "xs": xs,
     "ys": ys,
     "size": scaled_sizes_list,
@@ -147,6 +165,7 @@ shared_source = ColumnDataSource(data={
     "y": X_coord[:, 1],
     "class": y_train,
     "color": ['white'] * len(y_train),
+    "original_color": ['white'] * len(y_train),
     "marker": [marker[cls] for cls in y_train],
     "size": scaled_sizes_list[0],
     "alpha": scaled_alphas_list[0],
@@ -156,8 +175,9 @@ shared_source = ColumnDataSource(data={
     "noise": all_epoch_noises[0],
     "selection": [6] * len(y_train),
     "line_color": ['white'] * len(y_train),
-    "bar_alpha": [0] * len(y_train),
-    "temp": [0] * len(y_train)
+    "bar_alpha": [1] * len(y_train),
+    "temp": [0] * len(y_train),
+    "region": last_region_ids
 })
 
 all_barplot = ColumnDataSource(data={
@@ -166,6 +186,7 @@ all_barplot = ColumnDataSource(data={
 })
 
 current_barplot = ColumnDataSource(data={
+    "region": list(range(num_regions)),
     "noise": region_means_list[0],
     "color": ['white'] * len(region_means_list[0]),
     "sig_in": region_sig_in_list[0]
@@ -177,7 +198,7 @@ max_y = np.max(region_means_list)
 boundary = LSBoundaryVisualizer(shared_source, shared_resource, max_step-1, colors, total_batches, mode='Step', sig_projection=True, barplot_shared_resource=all_barplot, barplot_shared_source=current_barplot)
 projection = LinePlot(shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in))
 sigmoid = ProjectionPlot(shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in))
-barplot = BarProjectionPlot(current_barplot, shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in), min_y=min_y, max_y=np.max(all_epoch_noises))
+barplot = BarProjectionPlot(current_barplot, shared_source, min_x=np.min(sig_in), max_x=np.max(sig_in), min_y=np.min(region_means_list)-0.005, max_y=np.max(region_means_list)+0.005)
 
 boundary_layout = column(boundary.get_layout())
 sigmoid_layout = column(sigmoid.get_layout())
@@ -188,8 +209,8 @@ barplot_layout = column(barplot.get_layout())
 layout = row(
     boundary_layout, 
     column(barplot_layout,
-           sigmoid_layout,
-           projection_layout
+           #sigmoid_layout,
+           #projection_layout
            ), 
     )
 

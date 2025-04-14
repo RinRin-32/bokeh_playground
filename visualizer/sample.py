@@ -223,7 +223,7 @@ class Sample:
                     if (step < slider.end) {
                         step += 1;
                         slider.value = step;
-                        slider._timeout = setTimeout(animate, 100);
+                        slider._timeout = setTimeout(animate, 25);
                     } else {
                         button.label = "Restart";
                     }

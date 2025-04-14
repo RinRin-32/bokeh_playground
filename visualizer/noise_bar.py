@@ -16,14 +16,14 @@ class BarProjectionPlot:
         self.add_dynamic_y_range()
 
     def create_plot(self):
-        p = figure(height=600, width=600, title="Noise Magnitude", tools="", x_range=(self.min_x-1.5, self.max_x+1.5), y_range=(0, self.max_y))
+        p = figure(height=600, width=600, title="Noise Magnitude", tools="", x_range=(self.min_x-1.5, self.max_x+1.5), y_range=(self.min_y, self.max_y))
         p.xaxis.axis_line_color = None
-        p.yaxis.visible = False
+        #p.yaxis.visible = False
         p.xaxis.major_tick_line_color = None
         p.xaxis.minor_tick_line_color = None
 
         p.vbar(x="sig_in", top="noise", source=self.source, width=self.bar_width, color="color", line_color='black')
-        p.vbar(x="sig_in", top="noise", alpha="bar_alpha", source=self.sync, width=self.bar_width/5, color="color", line_color="color")
+        #p.vbar(x="sig_in", top="noise", alpha="bar_alpha", source=self.sync, width=self.bar_width/5, color="color", line_color="black")
 
         text_source = ColumnDataSource(data=dict(x=[-1], y=[0.5], text=["Noise Magnitude"]))
 
